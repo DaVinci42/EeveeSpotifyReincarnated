@@ -75,13 +75,24 @@ extension EeveeLyricsSettingsViewModel {
                 
                 UserDefaults.lyricsSource = newSource
 
-                // Clear any cached lyrics and the captured track ID so that the
-                // next network fetch immediately uses the newly selected source
-                // rather than replaying stale results from the old one.
+                // Signal the lyrics URL hook to bust its caches on the next
+                // intercept so the new source is used without an app restart.
+                lyricsSourceDidChange = true
                 MusixmatchLyricsRepository.shared.clearCache()
                 capturedTrackId = nil
                 capturedTrackTitle = nil
                 capturedArtistName = nil
+
+                // Ask Spotify to re-fetch lyrics by nudging the scroll view.
+                // The collection view reload causes the LyricsScrollProvider to
+                // request the color-lyrics URL again, which our hook intercepts.
+                DispatchQueue.main.async {
+                    if let vc = nowPlayingScrollViewController {
+                        vc.collectionView().reloadData()
+                    } else if let vc = npvScrollViewController {
+                        vc.collectionView().reloadData()
+                    }
+                }
             }
             .store(in: &cancellables)
     }

@@ -17,10 +17,16 @@ var hasShownUnauthorizedPopUp = false
 private let geniusLyricsRepository = GeniusLyricsRepository()
 private let petitLyricsRepository = PetitLyricsRepository()
 
+/// Set to `true` by the settings view model when the user picks a different
+/// lyrics source. `getLyricsDataForCurrentTrack` checks this flag and clears
+/// the captured-track cache so the very next Spotify lyrics request goes to
+/// the newly selected source without requiring an app restart.
+var lyricsSourceDidChange = false
+
 // Overload for 9.1.6 where we only have track ID from URL
 private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
     
-    let source = UserDefaults.lyricsSource
+    var source = UserDefaults.lyricsSource
 
     var currentTitle: String? = nil
     var currentArtist: String? = nil
@@ -113,7 +119,46 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         lyricsDto = try repository.getLyrics(searchQuery, options: options)
     }
     catch let error {
-        throw error
+        if let lyricsError = error as? LyricsError {
+            lyricsState.fallbackError = lyricsError
+
+            switch lyricsError {
+            case .invalidMusixmatchToken:
+                if !hasShownUnauthorizedPopUp {
+                    DispatchQueue.main.async {
+                        PopUpHelper.showPopUp(
+                            delayed: false,
+                            message: "musixmatch_unauthorized_popup".localized,
+                            buttonText: "OK".uiKitLocalized
+                        )
+                    }
+                    hasShownUnauthorizedPopUp = true
+                }
+            case .musixmatchRestricted:
+                if !hasShownRestrictedPopUp {
+                    DispatchQueue.main.async {
+                        PopUpHelper.showPopUp(
+                            delayed: false,
+                            message: "musixmatch_restricted_popup".localized,
+                            buttonText: "OK".uiKitLocalized
+                        )
+                    }
+                    hasShownRestrictedPopUp = true
+                }
+            default:
+                break
+            }
+        } else {
+            lyricsState.fallbackError = .unknownError
+        }
+
+        // Attempt Genius fallback if enabled and the primary source isn't already Genius.
+        if source != .genius && UserDefaults.lyricsOptions.geniusFallback {
+            source = .genius
+            lyricsDto = try geniusLyricsRepository.getLyrics(searchQuery, options: options)
+        } else {
+            throw error
+        }
     }
     
     lyricsState.isEmpty = lyricsDto.lines.isEmpty
@@ -122,7 +167,6 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         || (lyricsDto.romanization == .canBeRomanized && UserDefaults.lyricsOptions.romanization)
     
     lyricsState.loadedSuccessfully = true
-
 
     let lyrics = Lyrics.with {
         $0.data = lyricsDto.toSpotifyLyricsData(source: source.description)
@@ -255,6 +299,17 @@ func getLyricsDataForCurrentTrack(_ originalPath: String, originalLyrics: Lyrics
         capturedTrackTitle = nil
         capturedArtistName = nil
         capturedTrackId = nil
+    }
+
+    // When the user switches source in settings we clear the track cache so
+    // that this call — which Spotify triggers on its own schedule — fetches
+    // from the newly selected source without needing an app restart.
+    if lyricsSourceDidChange {
+        lyricsSourceDidChange = false
+        capturedTrackTitle = nil
+        capturedArtistName = nil
+        capturedTrackId = nil
+        MusixmatchLyricsRepository.shared.clearCache()
     }
 
     var lyrics = try loadCustomLyricsForTrackId(trackIdentifier)
