@@ -68,11 +68,7 @@ class HttpClientURLSessionHook: ClassHook<NSObject>, SpotifySessionDelegate {
                     semaphore.signal()
                 }
                 _ = semaphore.wait(timeout: .now() + .milliseconds(5000))
-                // If our pipeline failed (all sources including Genius fallback threw),
-                // serve an empty-lyrics payload rather than Spotify's own Musixmatch
-                // response in `buffer`. This prevents the "plays Musixmatch even when
-                // no Musixmatch token is configured" symptom.
-                orig.URLSession(session, dataTask: task, didReceiveData: customLyricsData ?? emptyLyricsData(originalLyrics: originalLyrics) ?? buffer)
+                orig.URLSession(session, dataTask: task, didReceiveData: customLyricsData ?? buffer)
                 orig.URLSession(session, task: task, didCompleteWithError: nil)
                 return
             }

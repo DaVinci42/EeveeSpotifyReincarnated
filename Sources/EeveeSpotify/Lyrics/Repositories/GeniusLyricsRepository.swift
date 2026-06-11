@@ -84,27 +84,40 @@ class GeniusLyricsRepository: LyricsRepository {
     private func mostRelevantHitResult(
         hits: [GeniusHit],
         strippedTitle: String,
+        primaryArtist: String,
         romanized: Bool,
         hasFoundRomanizedLyrics: inout Bool
-    ) -> GeniusHitResult {
+    ) throws -> GeniusHitResult {
         let results = hits.map { $0.result }
         
-        let matchingByTitle = results.filter(
-            { $0.title.containsInsensitive(strippedTitle) }
-        )
-        
-        if matchingByTitle.isEmpty {
-            return results.first!
+        // Narrow by title first
+        let matchingByTitle = results.filter {
+            $0.title.containsInsensitive(strippedTitle)
         }
-        
-        if romanized, let romanizedSong = matchingByTitle.first(
+
+        // From title matches, also require artist match for precision
+        let strippedArtist = primaryArtist.strippedTrackTitle
+        let matchingByBoth = matchingByTitle.filter {
+            $0.artistNames.containsInsensitive(strippedArtist)
+                || $0.artistNames.containsInsensitive(primaryArtist)
+        }
+
+        // Prefer romanization if requested
+        let pool = matchingByBoth.isEmpty ? matchingByTitle : matchingByBoth
+
+        if pool.isEmpty {
+            // Nothing matched by title at all — don't guess with results.first
+            throw LyricsError.noSuchSong
+        }
+
+        if romanized, let romanizedSong = pool.first(
             where: { $0.artistNames == "Genius Romanizations" }
         ) {
             hasFoundRomanizedLyrics = true
             return romanizedSong
         }
-        
-        return matchingByTitle.first!
+
+        return pool.first!
     }
     
     private func mapLyricsLines(_ rawLines: [String]) -> [String] {
@@ -132,9 +145,10 @@ class GeniusLyricsRepository: LyricsRepository {
         
         var hasFoundRomanizedLyrics = false
         
-        let song = mostRelevantHitResult(
+        let song = try mostRelevantHitResult(
             hits: hits,
             strippedTitle: strippedTitle,
+            primaryArtist: query.primaryArtist,
             romanized: options.romanization,
             hasFoundRomanizedLyrics: &hasFoundRomanizedLyrics
         )

@@ -30,7 +30,7 @@ class MusixmatchLyricsRepository: LyricsRepository {
     }
 
     private func getCacheKey(for query: LyricsSearchQuery) -> String {
-        return "\(query.hashValue)_\(selectedLanguage)"
+        return "\(query.hashValue)_\(selectedLanguage)_\(UserDefaults.lyricsSource.rawValue)"
     }
 
 

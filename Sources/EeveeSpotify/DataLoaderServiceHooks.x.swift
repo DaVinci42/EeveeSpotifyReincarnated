@@ -64,7 +64,7 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
         }
 
         do {
-            // Lyrics — async fetch with 5s budget, falls back to empty payload on failure.
+            // Lyrics — async fetch with 5s budget, falls back to Spotify's own response on failure.
             if url.isLyrics {
                 let originalLyrics = try? Lyrics(serializedBytes: buffer)
                 let semaphore = DispatchSemaphore(value: 0)
@@ -76,11 +76,7 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
                 }
 
                 _ = semaphore.wait(timeout: .now() + .milliseconds(5000))
-                // If our pipeline failed (all sources including Genius fallback threw),
-                // serve an empty-lyrics payload rather than Spotify's own Musixmatch
-                // response in `buffer`. This prevents the "plays Musixmatch even when
-                // no Musixmatch token is configured" symptom.
-                orig.URLSession(session, dataTask: task, didReceiveData: customLyricsData ?? emptyLyricsData(originalLyrics: originalLyrics) ?? buffer)
+                orig.URLSession(session, dataTask: task, didReceiveData: customLyricsData ?? buffer)
                 orig.URLSession(session, task: task, didCompleteWithError: nil)
                 return
             }
