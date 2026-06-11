@@ -17,12 +17,6 @@ var hasShownUnauthorizedPopUp = false
 private let geniusLyricsRepository = GeniusLyricsRepository()
 private let petitLyricsRepository = PetitLyricsRepository()
 
-/// Set to `true` by the settings view model when the user picks a different
-/// lyrics source. `getLyricsDataForCurrentTrack` checks this flag and clears
-/// the captured-track cache so the very next Spotify lyrics request goes to
-/// the newly selected source without requiring an app restart.
-var lyricsSourceDidChange = false
-
 // Overload for 9.1.6 where we only have track ID from URL
 private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
     
@@ -327,14 +321,6 @@ func getLyricsDataForCurrentTrack(_ originalPath: String, originalLyrics: Lyrics
         capturedTrackTitle = nil
         capturedArtistName = nil
         capturedTrackId = nil
-    }
-
-    // When the user switches source in settings, only bust the Musixmatch
-    // repo cache. Do NOT clear capturedTrackId/Title/ArtistName — those are
-    // needed by LRCLIB/Genius/Petit for the very next fetch.
-    if lyricsSourceDidChange {
-        lyricsSourceDidChange = false
-        MusixmatchLyricsRepository.shared.clearCache()
     }
 
     var lyrics = try loadCustomLyricsForTrackId(trackIdentifier)

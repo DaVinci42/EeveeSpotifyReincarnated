@@ -75,20 +75,10 @@ extension EeveeLyricsSettingsViewModel {
                 
                 UserDefaults.lyricsSource = newSource
 
-                // Set the flag — forceLyricsRefreshIfNeeded() (called from
-                // NPVScrollViewControllerHook.viewWillAppear) will consume it
-                // and remove+re-insert the LyricsScrollProvider so Spotify
-                // re-requests the color-lyrics URL for the current track.
-                lyricsSourceDidChange = true
-
-                // Legacy path: NowPlayingScrollViewController uses reloadData
-                // directly since it doesn't use a diffable data source.
-                DispatchQueue.main.async {
-                    if let vc = nowPlayingScrollViewController {
-                        MusixmatchLyricsRepository.shared.clearCache()
-                        vc.collectionView().reloadData()
-                    }
-                }
+                // Clear the Musixmatch in-memory cache so the next track
+                // fetch goes to the new source rather than serving a stale
+                // cached result.
+                MusixmatchLyricsRepository.shared.clearCache()
             }
             .store(in: &cancellables)
     }

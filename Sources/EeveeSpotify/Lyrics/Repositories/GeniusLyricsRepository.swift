@@ -87,28 +87,23 @@ class GeniusLyricsRepository: LyricsRepository {
         primaryArtist: String,
         romanized: Bool,
         hasFoundRomanizedLyrics: inout Bool
-    ) throws -> GeniusHitResult {
+    ) -> GeniusHitResult {
         let results = hits.map { $0.result }
-        
-        // Narrow by title first
+
         let matchingByTitle = results.filter {
             $0.title.containsInsensitive(strippedTitle)
         }
 
-        // From title matches, also require artist match for precision
         let strippedArtist = primaryArtist.strippedTrackTitle
         let matchingByBoth = matchingByTitle.filter {
             $0.artistNames.containsInsensitive(strippedArtist)
                 || $0.artistNames.containsInsensitive(primaryArtist)
         }
 
-        // Prefer romanization if requested
-        let pool = matchingByBoth.isEmpty ? matchingByTitle : matchingByBoth
-
-        if pool.isEmpty {
-            // Nothing matched by title at all — don't guess with results.first
-            throw LyricsError.noSuchSong
-        }
+        // Best match: title+artist → title only → first result
+        let pool = !matchingByBoth.isEmpty ? matchingByBoth
+                 : !matchingByTitle.isEmpty ? matchingByTitle
+                 : results
 
         if romanized, let romanizedSong = pool.first(
             where: { $0.artistNames == "Genius Romanizations" }
@@ -145,7 +140,7 @@ class GeniusLyricsRepository: LyricsRepository {
         
         var hasFoundRomanizedLyrics = false
         
-        let song = try mostRelevantHitResult(
+        let song = mostRelevantHitResult(
             hits: hits,
             strippedTitle: strippedTitle,
             primaryArtist: query.primaryArtist,
