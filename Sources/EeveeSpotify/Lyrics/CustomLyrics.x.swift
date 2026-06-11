@@ -56,26 +56,20 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         }
 
         if !hasMetadata {
-            // MPNowPlayingInfoCenter fallback: only trust it when the
-            // persistent identifier in the info matches our track ID, so we
-            // don't accidentally tag track A's URL with track B's title/artist
-            // during a rapid track change.
-            if let info = MPNowPlayingInfoCenter.default().nowPlayingInfo {
-                let persistentId = info[MPNowPlayingInfoPropertyExternalContentIdentifier] as? String
-                    ?? info["MPNowPlayingInfoPropertyExternalContentIdentifier"] as? String
-                let idMatches = persistentId.map { $0.contains(trackId) } ?? false
-
-                if idMatches,
-                   let title = info[MPMediaItemPropertyTitle] as? String,
-                   let artist = info[MPMediaItemPropertyArtist] as? String,
-                   !title.isEmpty, !artist.isEmpty {
-                    currentTitle = title
-                    currentArtist = artist
-                    hasMetadata = true
-                    capturedTrackId = trackId
-                    capturedTrackTitle = title
-                    capturedArtistName = artist
-                }
+            // MPNowPlayingInfoCenter fallback. Spotify fires the lyrics URL
+            // request while the track is playing, so nowPlayingInfo is current.
+            // We don't gate on ExternalContentIdentifier — Spotify doesn't set
+            // that key, so the match was always false and this path never ran.
+            if let info = MPNowPlayingInfoCenter.default().nowPlayingInfo,
+               let title = info[MPMediaItemPropertyTitle] as? String,
+               let artist = info[MPMediaItemPropertyArtist] as? String,
+               !title.isEmpty, !artist.isEmpty {
+                currentTitle = title
+                currentArtist = artist
+                hasMetadata = true
+                capturedTrackId = trackId
+                capturedTrackTitle = title
+                capturedArtistName = artist
             }
         }
 
