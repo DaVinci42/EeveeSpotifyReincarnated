@@ -74,6 +74,14 @@ extension EeveeLyricsSettingsViewModel {
                 }
                 
                 UserDefaults.lyricsSource = newSource
+
+                // Clear any cached lyrics and the captured track ID so that the
+                // next network fetch immediately uses the newly selected source
+                // rather than replaying stale results from the old one.
+                MusixmatchLyricsRepository.shared.clearCache()
+                capturedTrackId = nil
+                capturedTrackTitle = nil
+                capturedArtistName = nil
             }
             .store(in: &cancellables)
     }
