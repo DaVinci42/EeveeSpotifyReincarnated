@@ -153,7 +153,8 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         }
 
         // Attempt Genius fallback if enabled and the primary source isn't already Genius.
-        if source != .genius && UserDefaults.lyricsOptions.geniusFallback {
+        // Genius requires title + artist to search — skip if we don't have them.
+        if source != .genius && UserDefaults.lyricsOptions.geniusFallback && hasMetadata {
             source = .genius
             lyricsDto = try geniusLyricsRepository.getLyrics(searchQuery, options: options)
         } else {
@@ -277,6 +278,20 @@ private func loadCustomLyricsForCurrentTrack() throws -> Lyrics {
     }
     
     return lyrics
+}
+
+/// Returns a serialized empty `Lyrics` protobuf payload.
+/// Used as a fallback when every lyrics source (including Genius fallback) fails,
+/// so we show "no lyrics" instead of leaking Spotify's own Musixmatch response.
+func emptyLyricsData(originalLyrics: Lyrics? = nil) -> Data? {
+    let emptyDto = LyricsDto(lines: [], timeSynced: false, romanization: .original, translation: nil)
+    var lyrics = Lyrics.with {
+        $0.data = emptyDto.toSpotifyLyricsData(source: "")
+    }
+    if let originalLyrics = originalLyrics {
+        lyrics.colors = originalLyrics.colors
+    }
+    return try? lyrics.serializedData()
 }
 
 func getLyricsDataForCurrentTrack(_ originalPath: String, originalLyrics: Lyrics? = nil) throws -> Data {
