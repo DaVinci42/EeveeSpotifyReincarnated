@@ -75,29 +75,17 @@ extension EeveeLyricsSettingsViewModel {
                 
                 UserDefaults.lyricsSource = newSource
 
-                // Signal the lyrics URL hook to bust its caches on the next
-                // intercept so the new source is used without an app restart.
+                // Set the flag — forceLyricsRefreshIfNeeded() (called from
+                // NPVScrollViewControllerHook.viewWillAppear) will consume it
+                // and remove+re-insert the LyricsScrollProvider so Spotify
+                // re-requests the color-lyrics URL for the current track.
                 lyricsSourceDidChange = true
-                MusixmatchLyricsRepository.shared.clearCache()
-                capturedTrackId = nil
-                capturedTrackTitle = nil
-                capturedArtistName = nil
 
-                // Evict any color-lyrics responses that Spotify cached in
-                // NSURLCache. Without this, already-played tracks are served
-                // from the HTTP cache and our hook never fires — meaning the
-                // old source's lyrics are shown until an app restart.
-                // removeCachedResponses(since: .distantPast) clears everything,
-                // which is acceptable since we only call this on explicit user action.
-                URLCache.shared.removeCachedResponses(since: .distantPast)
-
-                // Ask Spotify to re-fetch lyrics by nudging the scroll view.
-                // The collection view reload causes the LyricsScrollProvider to
-                // request the color-lyrics URL again, which our hook intercepts.
+                // Legacy path: NowPlayingScrollViewController uses reloadData
+                // directly since it doesn't use a diffable data source.
                 DispatchQueue.main.async {
                     if let vc = nowPlayingScrollViewController {
-                        vc.collectionView().reloadData()
-                    } else if let vc = npvScrollViewController {
+                        MusixmatchLyricsRepository.shared.clearCache()
                         vc.collectionView().reloadData()
                     }
                 }

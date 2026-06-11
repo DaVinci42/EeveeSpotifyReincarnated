@@ -34,12 +34,14 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
 
     let needsMetadata = source == .genius || source == .lrclib || source == .petit
 
+    // 1. Use cached metadata if it's for the same track
     if capturedTrackId == trackId, let title = capturedTrackTitle, let artist = capturedArtistName {
         currentTitle = title
         currentArtist = artist
         hasMetadata = true
     }
 
+    // 2. Try statefulPlayer (most reliable on modern Spotify)
     if !hasMetadata {
         if let player = statefulPlayer,
            let track = player.currentTrack() {
@@ -54,36 +56,40 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
                 capturedArtistName = currentArtist
             }
         }
+    }
 
-        if !hasMetadata {
-            // MPNowPlayingInfoCenter fallback. Spotify fires the lyrics URL
-            // request while the track is playing, so nowPlayingInfo is current.
-            // We don't gate on ExternalContentIdentifier — Spotify doesn't set
-            // that key, so the match was always false and this path never ran.
-            if let info = MPNowPlayingInfoCenter.default().nowPlayingInfo,
-               let title = info[MPMediaItemPropertyTitle] as? String,
-               let artist = info[MPMediaItemPropertyArtist] as? String,
-               !title.isEmpty, !artist.isEmpty {
-                currentTitle = title
-                currentArtist = artist
-                hasMetadata = true
-                capturedTrackId = trackId
-                capturedTrackTitle = title
-                capturedArtistName = artist
+    // 3. MPNowPlayingInfoCenter — must be read on the main thread
+    if !hasMetadata {
+        var npTitle: String? = nil
+        var npArtist: String? = nil
+        if Thread.isMainThread {
+            npTitle = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
+            npArtist = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtist] as? String
+        } else {
+            DispatchQueue.main.sync {
+                npTitle = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
+                npArtist = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtist] as? String
             }
         }
+        if let title = npTitle, let artist = npArtist, !title.isEmpty, !artist.isEmpty {
+            currentTitle = title
+            currentArtist = artist
+            hasMetadata = true
+            capturedTrackId = trackId
+            capturedTrackTitle = title
+            capturedArtistName = artist
+        }
+    }
 
-        if !hasMetadata {
-            if let token = spotifyAccessToken {
-                if let info = fetchTrackDetails(trackId: trackId, token: token) {
-                    currentTitle = info.title
-                    currentArtist = info.artist
-                    hasMetadata = true
-                    capturedTrackId = trackId
-                    capturedTrackTitle = currentTitle
-                    capturedArtistName = currentArtist
-                }
-            }
+    // 4. Spotify Web API fallback using captured Bearer token
+    if !hasMetadata, let token = spotifyAccessToken {
+        if let info = fetchTrackDetails(trackId: trackId, token: token) {
+            currentTitle = info.title
+            currentArtist = info.artist
+            hasMetadata = true
+            capturedTrackId = trackId
+            capturedTrackTitle = currentTitle
+            capturedArtistName = currentArtist
         }
     }
 
@@ -156,8 +162,12 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         }
 
         // Attempt Genius fallback if enabled and the primary source isn't already Genius.
-        // Genius requires title + artist to search — skip if we don't have them.
-        if source != .genius && UserDefaults.lyricsOptions.geniusFallback && hasMetadata {
+        // Genius requires title + artist to search — only attempt if we have them.
+        let canFallbackToGenius = source != .genius
+            && UserDefaults.lyricsOptions.geniusFallback
+            && !(currentTitle ?? "").isEmpty
+            && !(currentArtist ?? "").isEmpty
+        if canFallbackToGenius {
             source = .genius
             lyricsDto = try geniusLyricsRepository.getLyrics(searchQuery, options: options)
         } else {
@@ -319,14 +329,11 @@ func getLyricsDataForCurrentTrack(_ originalPath: String, originalLyrics: Lyrics
         capturedTrackId = nil
     }
 
-    // When the user switches source in settings we clear the track cache so
-    // that this call — which Spotify triggers on its own schedule — fetches
-    // from the newly selected source without needing an app restart.
+    // When the user switches source in settings, only bust the Musixmatch
+    // repo cache. Do NOT clear capturedTrackId/Title/ArtistName — those are
+    // needed by LRCLIB/Genius/Petit for the very next fetch.
     if lyricsSourceDidChange {
         lyricsSourceDidChange = false
-        capturedTrackTitle = nil
-        capturedArtistName = nil
-        capturedTrackId = nil
         MusixmatchLyricsRepository.shared.clearCache()
     }
 
