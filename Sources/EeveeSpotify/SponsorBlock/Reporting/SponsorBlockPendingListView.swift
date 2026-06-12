@@ -39,7 +39,7 @@ struct SponsorBlockPendingListView: View {
             }
 
             if groups.isEmpty {
-                Section(header: Text("draftsTitle".localized)) {
+                Section(header: Text("draftsTitleSB".localized)) {
                     Text("draftsEmpty".localized)
                         .font(.footnote)
                         .foregroundColor(.secondary)

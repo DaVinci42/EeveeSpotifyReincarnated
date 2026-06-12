@@ -5,47 +5,47 @@ struct SponsorBlockHelpView: View {
         List {
             Section(header: Text("playerGesturesTitle".localized)) {
                 row(symbol: "hand.tap",
-                    title: "gesturesTitle1",
-                    detail: "gesturesDeps1")
+                    title: "gesturesTitle1".localized,
+                    detail: "gesturesDeps1".localized)
                 row(symbol: "hand.point.up.left.fill",
-                    title: "gesturesTitle2",
-                    detail: "gesturesDeps2")
+                    title: "gesturesTitle2".localized,
+                    detail: "gesturesDeps2".localized)
             }
 
             Section(header: Text("submittingTitle".localized)) {
                 row(symbol: "square.and.pencil",
-                    title: "submittingSectionTitle1",
-                    detail: "submittingSectionDeps1")
+                    title: "submittingSectionTitle1".localized,
+                    detail: "submittingSectionDeps1".localized)
                 row(symbol: "lock.shield",
-                    title: "submittingSectionTitle2",
-                    detail: "submittingSectionDeps2")
+                    title: "submittingSectionTitle2".localized,
+                    detail: "submittingSectionDeps2".localized)
             }
 
-            Section(header: Text("skipToastTitle")) {
+            Section(header: Text("skipToastTitle".localized)) {
                 row(symbol: "arrow.uturn.backward",
-                    title: "skipToastSectionTitle1",
-                    detail: "skipToastSectionDeps1")
+                    title: "skipToastSectionTitle1".localized,
+                    detail: "skipToastSectionDeps1".localized)
                 row(symbol: "hand.thumbsup.fill",
-                    title: "skipToastSectionTitle2",
-                    detail: "skipToastSectionDeps2")
+                    title: "skipToastSectionTitle2".localized,
+                    detail: "skipToastSectionDeps2".localized)
                 row(symbol: "ellipsis",
-                    title: "skipToastSectionTitle3",
-                    detail: "skipToastSectionDeps3")
+                    title: "skipToastSectionTitle3".localized,
+                    detail: "skipToastSectionDeps3".localized)
             }
 
-            Section(header: Text("managingSegmentsTitle")) {
+            Section(header: Text("managingSegmentsTitle".localized)) {
                 row(symbol: "list.bullet.rectangle.portrait",
-                    title: "managingSegmentsSectionTitle1",
-                    detail: "managingSegmentsSectionDeps1")
+                    title: "managingSegmentsSectionTitle1".localized,
+                    detail: "managingSegmentsSectionDeps1".localized)
                 row(symbol: "tray.full",
-                    title: "managingSegmentsSectionTitle2",
-                    detail: "managingSegmentsSectionDeps2")
+                    title: "managingSegmentsSectionTitle2".localized,
+                    detail: "managingSegmentsSectionDeps2".localized)
             }
 
-            Section(header: Text("categoriesTitle")) {
+            Section(header: Text("categoriesTitle".localized)) {
                 row(symbol: "list.bullet.rectangle",
-                    title: "categoriesSectionTitle1",
-                    detail: "categoriesSectionDeps1")
+                    title: "categoriesSectionTitle1".localized,
+                    detail: "categoriesSectionDeps1".localized)
             }
 
             Section {
@@ -56,10 +56,10 @@ struct SponsorBlockHelpView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-        .navigationTitle(NSLocalizedString("howToUseTitle", comment: ""))
+        .navigationTitle("howToUseTitle".localized)
     }
 
-    private func row(symbol: String, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
+    private func row(symbol: String, title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .medium))

@@ -4,6 +4,8 @@ patching = "Impostazioni di Patch";
 lyrics = "Testi";
 customization = "Personalizzazione";
 experiments = "Sperimentali";
+sponsorblock = "SponsorBlock (BETA)";
+appIcon = "Icona App";
 
 common_issues_tip_title = "Riscontri problemi?";
 
@@ -157,7 +159,7 @@ debug_section_footer = "Esporta o elimina i Log di Debug.";
 "resetFooter" = "Forza un nuovo accesso. Svuota le voci del portachiavi di Spotify, le directory sandbox e i container app-group. Le altre app in sideload non subiranno modifiche. L'app si chiuderà al termine.";
 
 // Settings Bar
-"eevee_inline_subtitle_text" = "Patch, testi, personalizzazioni ed esperimenti";
+eevee_inline_subtitle_text = "Patch, testi, personalizzazioni ed esperimenti";
 
 // App Icon Chooser
 "appIconTitle" = "Scegli l'icona";
@@ -277,6 +279,6 @@ debug_section_footer = "Esporta o elimina i Log di Debug.";
 "managingSegmentsSectionTitle2" = "Segnalazioni e bozze";
 "managingSegmentsSectionDeps2" = "Impostazioni → 'Segnalazioni e bozze' contiene le bozze a cui stai lavorando (non ancora inviate) e i segmenti nascosti. Le bozze rimangono salvate tra un riavvio e l'altro.";
 
-"categoriesTitle" = "Categorie";
-"categoriesSectionTitle1" = "Azioni per categoria";
-"categoriesSectionDeps1" = "Off = ignora. Mostra = evidenzia solo sulla barra. Manuale = chiedi prima di saltare. Auto = salta in automatico.";
+categoriesTitle = "Categorie";
+categoriesSectionTitle1 = "Azioni per categoria";
+categoriesSectionDeps1 = "Off = ignora. Mostra = evidenzia solo sulla barra. Manuale = chiedi prima di saltare. Auto = salta in automatico.";
