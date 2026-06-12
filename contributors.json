@@ -18,7 +18,8 @@
             {
                 "username": "M0d-4",
                 "roles": [
-                    "Contributor"
+                    "Collaborator",
+                    "Developer"
                 ]
             },
             {
