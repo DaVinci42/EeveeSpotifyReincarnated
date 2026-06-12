@@ -249,6 +249,7 @@ allResetSB = "Everything (all of the above)";
 regenerateIDSB = "Regenerate user ID";
 localSubmissionsSB = "My local submissions (%@)";
 votedRecordsSB = "Voted records (%@)";
+hiddenSegmentsSB = "Hidden segments (%@)";
 draftsCountSB = "Draft (%@)";
 settingsResetSB = "Settings (toggles + categories + colors)";
 

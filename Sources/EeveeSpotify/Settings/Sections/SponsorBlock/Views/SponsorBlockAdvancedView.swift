@@ -25,13 +25,13 @@ struct SponsorBlockAdvancedView: View {
 
             Section(header: Text("tuningTitle".localized)) {
                 Stepper(
-                    String(format: NSLocalizedString("minSegmentDuration", comment: ""), options.minSegmentDuration),
+                    String(format: "minSegmentDuration".localized, options.minSegmentDuration),
                     value: $options.minSegmentDuration,
                     in: 0.0...30.0,
                     step: 0.5
                 )
                 Stepper(
-                    String(format: NSLocalizedString("toastDuration", comment: ""), options.toastDuration),
+                    String(format: "toastDuration".localized, options.toastDuration),
                     value: $options.toastDuration,
                     in: 1.0...8.0,
                     step: 0.2
@@ -62,7 +62,7 @@ struct SponsorBlockAdvancedView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-        .navigationTitle(NSLocalizedString("advancedTitle", comment: ""))
+        .navigationTitle("advancedTitle".localized)
         .actionSheet(isPresented: $showingResetSheet) { resetSheet() }
     }
 
@@ -89,18 +89,18 @@ struct SponsorBlockAdvancedView: View {
                         colors: SponsorBlockOptions.defaultColors
                     )
                 },
-                .destructive(Text(String(format: NSLocalizedString("draftsCountSB", comment: ""), draftCount))) {
+                .destructive(Text(String(format: "draftsCountSB".localized, draftCount))) {
                     for (id, _) in SponsorBlockPendingStore.all() {
                         SponsorBlockPendingStore.clear(episodeID: id)
                     }
                 },
-                .destructive(Text("Hidden segments (\(hiddenCount))")) {
+                .destructive(Text(String(format: "hiddenSegmentsSB".localized, hiddenCount))) {
                     SponsorBlockHiddenStore.clear()
                 },
-                .destructive(Text(String(format: NSLocalizedString("votedRecordsSB", comment: ""), votedCount))) {
+                .destructive(Text(String(format: "votedRecordsSB".localized, votedCount))) {
                     SponsorBlockVotedStore.clear()
                 },
-                .destructive(Text(String(format: NSLocalizedString("localSubmissionsSB", comment: ""), mineCount))) {
+                .destructive(Text(String(format: "localSubmissionsSB".localized, mineCount))) {
                     SponsorBlockMySubmissionsStore.clear()
                 },
                 .destructive(Text("regenerateIDSB".localized)) {

@@ -55,7 +55,7 @@ struct SponsorBlockPendingListView: View {
                 }
             }
 
-            Section(header: Text(String(format: NSLocalizedString("hidden_locally_header", comment: ""), hiddenUUIDs.count)),
+            Section(header: Text(String(format: "hidden_locally_header".localized, hiddenUUIDs.count)),
                     footer: Text("hiddenFooter".localized)) {
                 if hiddenUUIDs.isEmpty {
                     Text("hiddenSegmentsEmpty".localized)
@@ -92,7 +92,7 @@ struct SponsorBlockPendingListView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-        .navigationTitle(NSLocalizedString("sponsorblock_reports_title", comment: ""))
+        .navigationTitle("sponsorblock_reports_title".localized)
         .onAppear(perform: reload)
         .alert(isPresented: $showingRegenConfirm) {
             Alert(

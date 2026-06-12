@@ -260,7 +260,7 @@ func injectEeveeInlineRow(into vc: UIViewController) {
     row.addSubview(title)
 
     let subtitle = UILabel(frame: CGRect(x: 20, y: 34, width: textWidth, height: 18))
-    subtitle.text = NSLocalizedString("eevee_inline_subtitle_text", comment: "")
+    subtitle.text = "eevee_inline_subtitle_text".localized
     subtitle.textColor = UIColor(white: 1.0, alpha: 0.6)
     subtitle.font = UIFont.systemFont(ofSize: 13)
     subtitle.autoresizingMask = [.flexibleWidth]
