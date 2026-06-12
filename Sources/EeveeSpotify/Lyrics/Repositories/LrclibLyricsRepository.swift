@@ -11,6 +11,8 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.httpAdditionalHeaders = [
             "User-Agent": "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify"
         ]
+        configuration.timeoutIntervalForRequest = 3
+        configuration.timeoutIntervalForResource = 3
         
         session = URLSession(configuration: configuration)
     }
@@ -32,36 +34,23 @@ class LrclibLyricsRepository: LyricsRepository {
             stringUrl += "?\(queryString)"
         }
         
-        let request = URLRequest(url: URL(string: stringUrl)!, timeoutInterval: 8)
+        let request = URLRequest(url: URL(string: stringUrl)!)
 
         let semaphore = DispatchSemaphore(value: 0)
         var data: Data?
         var error: Error?
-        var httpStatusCode: Int = 0
 
-        let task = session.dataTask(with: request) { responseData, urlResponse, err in
+        let task = session.dataTask(with: request) { response, _, err in
             error = err
-            data = responseData
-            if let http = urlResponse as? HTTPURLResponse {
-                httpStatusCode = http.statusCode
-            }
+            data = response
             semaphore.signal()
         }
 
         task.resume()
-        let timedOut = semaphore.wait(timeout: .now() + .seconds(8)) == .timedOut
-
-        if timedOut {
-            task.cancel()
-            throw LyricsError.noSuchSong
-        }
+        semaphore.wait()
 
         if let error = error {
             throw error
-        }
-
-        if httpStatusCode == 404 {
-            throw LyricsError.noSuchSong
         }
 
         guard let data else { throw LyricsError.decodingError }
