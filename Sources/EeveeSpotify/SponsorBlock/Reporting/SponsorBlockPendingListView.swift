@@ -46,7 +46,7 @@ struct SponsorBlockPendingListView: View {
                 }
             } else {
                 ForEach(groups, id: \.episodeID) { group in
-                    let headerText = String(format: NSLocalizedString("episode_header", comment: ""), "\(group.episodeID)")
+                    let headerText = String(format: "episode_header".localized, "\(group.episodeID)")
                     Section(header: Text(headerText)) {
                         ForEach(group.drafts) { d in
                             draftRow(d)
