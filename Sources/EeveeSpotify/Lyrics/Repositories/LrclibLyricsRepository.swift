@@ -14,6 +14,11 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.timeoutIntervalForRequest = 5
         configuration.timeoutIntervalForResource = 5
         configuration.connectionProxyDictionary = [:]
+        let originalProtocols = configuration.protocolClasses ?? []
+        writeDebugLog("[LRCLIB] Registered URLProtocols: \(originalProtocols.map { String(describing: $0) })")
+        configuration.protocolClasses = originalProtocols.filter {
+            String(describing: $0).hasPrefix("__NS") || String(describing: $0).hasPrefix("_NS")
+        }
         
         session = URLSession(configuration: configuration)
     }
