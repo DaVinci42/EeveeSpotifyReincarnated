@@ -154,7 +154,7 @@ no_debug_log_found_ok = "OK";
 debug_section_footer = "Export or clear the debug log.";
 
 // Full reset
-resetButtonTitle = "Full Reset"
+resetButtonTitle = "Full Reset";
 resetSubtitle = "Wipes Spotify keychain, sandbox dirs, and app-group containers. Forces re-login. App exits when done.";
 resetFooter = "Force re-login. Wipes Spotify keychain entries, sandbox dirs, and app-group containers. Other sideloaded apps untouched. App exits when done.";
 
