@@ -230,7 +230,7 @@ class SettingsListViewControllerHook: ClassHook<UIViewController> {
 private let eeveeInlineRowTag = 1338
 private let eeveeInlineRowHeight: CGFloat = 68
 private let eeveeInlineRowTitle = "EeveeSpotify"
-private let eeveeInlineRowSubtitle = "Patching, lyrics, customization, and experiments"
+private let eeveeInlineRowSubtitle = NSLocalizedString("eevee_inline_subtitle_text", comment: "")
 
 func injectEeveeInlineRow(into vc: UIViewController) {
     // Each Spotify page sits in a MusicAppPageHostingViewController wrapper; the list VC is its child.
