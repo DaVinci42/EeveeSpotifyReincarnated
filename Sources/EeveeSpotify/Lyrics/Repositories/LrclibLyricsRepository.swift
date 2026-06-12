@@ -32,23 +32,36 @@ class LrclibLyricsRepository: LyricsRepository {
             stringUrl += "?\(queryString)"
         }
         
-        let request = URLRequest(url: URL(string: stringUrl)!)
+        let request = URLRequest(url: URL(string: stringUrl)!, timeoutInterval: 8)
 
         let semaphore = DispatchSemaphore(value: 0)
         var data: Data?
         var error: Error?
+        var httpStatusCode: Int = 0
 
-        let task = session.dataTask(with: request) { response, _, err in
+        let task = session.dataTask(with: request) { responseData, urlResponse, err in
             error = err
-            data = response
+            data = responseData
+            if let http = urlResponse as? HTTPURLResponse {
+                httpStatusCode = http.statusCode
+            }
             semaphore.signal()
         }
 
         task.resume()
-        semaphore.wait()
+        let timedOut = semaphore.wait(timeout: .now() + .seconds(8)) == .timedOut
+
+        if timedOut {
+            task.cancel()
+            throw LyricsError.noSuchSong
+        }
 
         if let error = error {
             throw error
+        }
+
+        if httpStatusCode == 404 {
+            throw LyricsError.noSuchSong
         }
 
         guard let data else { throw LyricsError.decodingError }
