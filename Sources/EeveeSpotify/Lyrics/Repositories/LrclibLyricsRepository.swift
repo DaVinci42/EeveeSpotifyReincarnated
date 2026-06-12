@@ -11,8 +11,9 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.httpAdditionalHeaders = [
             "User-Agent": "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify"
         ]
-        configuration.timeoutIntervalForRequest = 3
-        configuration.timeoutIntervalForResource = 3
+        configuration.timeoutIntervalForRequest = 5
+        configuration.timeoutIntervalForResource = 5
+        configuration.connectionProxyDictionary = [:]
         
         session = URLSession(configuration: configuration)
     }
