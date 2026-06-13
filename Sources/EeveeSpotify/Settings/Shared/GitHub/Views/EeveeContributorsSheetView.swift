@@ -5,12 +5,17 @@ struct ContributorRow: View {
     
     var body: some View {
         HStack {
-            ImageView(urlString: "https://github.com/\(contributor.username).png")
-                .frame(width: 40, height: 40)
-                .clipShape(Circle())
+            HStack(spacing: -8) {
+                ForEach(contributor.usernames, id: \.self) { username in
+                    ImageView(urlString: "https://github.com/\(username).png")
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
+                }
+            }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(contributor.username)
+                Text(contributor.usernames.joined(separator: " & "))
                     .font(.headline)
                 
                 Text(contributor.roles.joined(separator: ", "))
@@ -62,7 +67,7 @@ struct EeveeContributorsSheetView: View {
             ForEach(sections, id: \.title) { section in
                 Section(header: Text(section.title)) {
                     let contributors = section.shuffled ? section.contributors.shuffled() : section.contributors
-                    ForEach(contributors, id: \.username) { contributor in
+                    ForEach(contributors, id: \.usernames) { contributor in
                         ContributorRow(contributor: contributor)
                     }
                 }
