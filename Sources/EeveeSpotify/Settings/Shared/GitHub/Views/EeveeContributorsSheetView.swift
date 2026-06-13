@@ -10,9 +10,10 @@ struct ContributorRow: View {
                 HStack(spacing: 6) {
                     ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
                         if index > 0 {
+                            // Fix 3: "&" same font and color as contributor names
                             Text("&")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
+                                .font(.headline)
+                                .foregroundColor(.white)
                         }
                         HStack(spacing: 4) {
                             ImageView(urlString: "https://github.com/\(username).png")
@@ -29,7 +30,7 @@ struct ContributorRow: View {
             }
             .padding(.vertical, 4)
         } else {
-            // Single contributor: pfp on left, name + roles stacked on right
+            // Single contributor: pfp on left, name + roles on right
             HStack(alignment: .top, spacing: 12) {
                 ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
                     .frame(width: 40, height: 40)
@@ -46,8 +47,8 @@ struct ContributorRow: View {
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
 
+                                // Fix 1: co-contributor sits right after role text, no Spacer
                                 if let coUsernames = role.coUsernames, !coUsernames.isEmpty {
-                                    Spacer()
                                     ForEach(Array(coUsernames.enumerated()), id: \.offset) { index, username in
                                         HStack(spacing: 4) {
                                             ImageView(urlString: "https://github.com/\(username).png")
@@ -62,10 +63,18 @@ struct ContributorRow: View {
                             }
                         }
                     } else {
-                        ForEach(contributor.roles, id: \.self) { role in
-                            Text(role)
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
+                        // Fix 2: roles with no co-contributor shown side by side in one row
+                        HStack(spacing: 0) {
+                            ForEach(Array(contributor.roles.enumerated()), id: \.offset) { index, role in
+                                if index > 0 {
+                                    Text("  ·  ")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                Text(role)
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
                 }
