@@ -19,15 +19,30 @@ private class LrclibTLSDelegate: NSObject, URLSessionTaskDelegate {
             return
         }
 
-        // Validate the certificate against the original hostname (for SNI/cert
-        // matching) even though the connection is made directly to an IPv4 address.
+        // Build a fresh trust object from the peer's certificate chain, evaluated
+        // against the original hostname. Re-using and mutating the trust object
+        // supplied by URLSession for a raw-IP connection can fail chain building
+        // (errSSLXCertChainInvalid / -9802) even when the certificate is valid.
+        guard let certChain = SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
+              !certChain.isEmpty else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
         let policy = SecPolicyCreateSSL(true, expectedHost as CFString)
-        SecTrustSetPolicies(serverTrust, policy)
+
+        var freshTrust: SecTrust?
+        guard SecTrustCreateWithCertificates(certChain as CFArray, policy, &freshTrust) == errSecSuccess,
+              let freshTrust else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
 
         var error: CFError?
-        if SecTrustEvaluateWithError(serverTrust, &error) {
-            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        if SecTrustEvaluateWithError(freshTrust, &error) {
+            completionHandler(.useCredential, URLCredential(trust: freshTrust))
         } else {
+            writeDebugLog("[LRCLIB] TLS validation failed for \(expectedHost): \(String(describing: error))")
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
