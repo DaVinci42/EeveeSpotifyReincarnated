@@ -67,7 +67,7 @@ struct ContributorRow: View {
                         HStack(spacing: 0) {
                             ForEach(Array(contributor.roles.enumerated()), id: \.offset) { index, role in
                                 if index > 0 {
-                                    Text("  ·  ")
+                                    Text(", ")
                                         .font(.subheadline)
                                         .foregroundColor(.gray)
                                 }
