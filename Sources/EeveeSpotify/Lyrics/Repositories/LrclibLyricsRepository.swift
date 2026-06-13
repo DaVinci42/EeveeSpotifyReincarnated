@@ -23,8 +23,19 @@ private class LrclibTLSDelegate: NSObject, URLSessionTaskDelegate {
         // against the original hostname. Re-using and mutating the trust object
         // supplied by URLSession for a raw-IP connection can fail chain building
         // (errSSLXCertChainInvalid / -9802) even when the certificate is valid.
-        guard let certChain = SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
-              !certChain.isEmpty else {
+        let certCount = SecTrustGetCertificateCount(serverTrust)
+        guard certCount > 0 else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        var certChain: [SecCertificate] = []
+        for i in 0..<certCount {
+            if let cert = SecTrustGetCertificateAtIndex(serverTrust, i) {
+                certChain.append(cert)
+            }
+        }
+        guard !certChain.isEmpty else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
