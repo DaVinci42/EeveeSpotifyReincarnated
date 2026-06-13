@@ -4,23 +4,31 @@ struct ContributorRow: View {
     let contributor: EeveeContributor
 
     var body: some View {
-        HStack(alignment: .center, spacing: 6) {
-            if contributor.usernames.count > 1 {
-                ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
-                    if index > 0 {
-                        Text("&")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    HStack(spacing: 4) {
-                        ImageView(urlString: "https://github.com/\(username).png")
-                            .frame(width: 20, height: 20)
-                            .clipShape(Circle())
-                        Text(nameFor(index: index, username: username))
-                            .font(.headline)
+        if contributor.usernames.count > 1 {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
+                        if index > 0 {
+                            Text("&")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+                        HStack(spacing: 4) {
+                            ImageView(urlString: "https://github.com/\(username).png")
+                                .frame(width: 20, height: 20)
+                                .clipShape(Circle())
+                            Text(nameFor(index: index, username: username))
+                                .font(.headline)
+                        }
                     }
                 }
-            } else {
+                Text(contributor.roles.joined(separator: ", "))
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            .padding(.vertical, 4)
+        } else {
+            HStack(spacing: 12) {
                 ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
                     .frame(width: 40, height: 40)
                     .clipShape(Circle())
@@ -28,25 +36,13 @@ struct ContributorRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(contributor.displayName ?? contributor.usernames[0])
                         .font(.headline)
-
                     Text(contributor.roles.joined(separator: ", "))
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
             }
-
-            Spacer()
+            .padding(.vertical, 4)
         }
-        .if(contributor.usernames.count > 1) { view in
-            view.overlay(
-                Text(contributor.roles.joined(separator: ", "))
-                    .font(.subheadline)
-                    .foregroundColor(.gray),
-                alignment: .bottomLeading
-            )
-            .padding(.bottom, 14)
-        }
-        .padding(.vertical, 4)
     }
 
     private func nameFor(index: Int, username: String) -> String {
@@ -61,17 +57,6 @@ struct ContributorRow: View {
             return parts[index]
         }
         return username
-    }
-}
-
-extension View {
-    @ViewBuilder
-    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
     }
 }
 
