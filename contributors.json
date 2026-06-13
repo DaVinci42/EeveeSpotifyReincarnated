@@ -5,6 +5,7 @@
         "contributors": [
             {
                 "usernames": ["jaydenjcpy"],
+                "displayName": "jaydenjcpy",
                 "roles": [
                     "Current Maintainer",
                     "Developer"
@@ -12,6 +13,7 @@
             },
             {
                 "usernames": ["faroukbmiled"],
+                "displayName": "faroukbmiled",
                 "roles": [
                     "Collaborator",
                     "Developer"
@@ -19,6 +21,7 @@
             },
             {
                 "usernames": ["M0d-4"],
+                "displayName": "Mod4",
                 "roles": [
                     "Collaborator",
                     "Developer"
@@ -26,12 +29,14 @@
             },
             {
                 "usernames": ["Meeep1"],
+                "displayName": "Meeep1",
                 "roles": [
                     "EeveeSpotifyRevivedPublic Developer"
                 ]
             },
             {
                 "usernames": ["whoeevee"],
+                "displayName": "whoeevee",
                 "roles": [
                     "Original Creator",
                     "Former Developer"
@@ -39,6 +44,7 @@
             },
             {
                 "usernames": ["asdfzxcvbn"],
+                "displayName": "asdfzxcvbn",
                 "roles": [
                     "Former Collaborator"
                 ]
@@ -51,149 +57,131 @@
         "contributors": [
             {
                 "usernames": ["wuku0"],
-                "roles": [
-                    "Croatian"
-                ]
+                "displayName": "wuku0",
+                "roles": ["Croatian"]
             },
             {
                 "usernames": ["by3lish"],
-                "roles": [
-                    "Azerbaijani"
-                ]
+                "displayName": "by3lish",
+                "roles": ["Azerbaijani"]
             },
             {
                 "usernames": ["longopy"],
-                "roles": [
-                    "Spanish"
-                ]
+                "displayName": "longopy",
+                "roles": ["Spanish"]
             },
             {
                 "usernames": ["xiangfeidexiaohuo"],
-                "roles": [
-                    "Simplified Chinese"
-                ]
+                "displayName": "xiangfeidexiaohuo",
+                "roles": ["Simplified Chinese"]
             },
             {
                 "usernames": ["LivioZ", "Andrea-Filice"],
-                "roles": [
-                    "Italian"
-                ]
+                "displayName": "LivioZ & Andrea-Filice",
+                "roles": ["Italian"]
             },
             {
                 "usernames": ["LIKVIDATOR1337"],
-                "roles": [
-                    "Ukrainian"
-                ]
+                "displayName": "LIKVIDATOR1337",
+                "roles": ["Ukrainian"]
             },
             {
                 "usernames": ["gototheskinny"],
-                "roles": [
-                    "Turkish"
-                ]
+                "displayName": "gototheskinny",
+                "roles": ["Turkish"]
             },
             {
                 "usernames": ["ElliotCHEN37"],
-                "roles": [
-                    "Traditional Chinese"
-                ]
+                "displayName": "ElliotCHEN37",
+                "roles": ["Traditional Chinese"]
             },
             {
                 "usernames": ["schweppes-0x"],
-                "roles": [
-                    "Bulgarian"
-                ]
+                "displayName": "schweppes-0x",
+                "roles": ["Bulgarian"]
             },
             {
                 "usernames": ["speedyfriend433"],
-                "roles": [
-                    "Korean"
-                ]
+                "displayName": "speedyfriend433",
+                "roles": ["Korean"]
             },
             {
                 "usernames": ["Richard-NDC"],
-                "roles": [
-                    "Vietnamese"
-                ]
+                "displayName": "Richard-NDC",
+                "roles": ["Vietnamese"]
             },
             {
                 "usernames": ["wlxxd"],
-                "roles": [
-                    "German"
-                ]
+                "displayName": "wlxxd",
+                "roles": ["German"]
             },
             {
                 "usernames": ["Incognito-Coder"],
-                "roles": [
-                    "Persian"
-                ]
+                "displayName": "Incognito-Coder",
+                "roles": ["Persian"]
             },
             {
                 "usernames": ["UnexcitingDean"],
-                "roles": [
-                    "Danish"
-                ]
+                "displayName": "UnexcitingDean",
+                "roles": ["Danish"]
             },
             {
                 "usernames": ["An0n-00"],
-                "roles": [
-                    "Swiss German"
-                ]
+                "displayName": "An0n-00",
+                "roles": ["Swiss German"]
             },
             {
                 "usernames": ["CukierDev"],
-                "roles": [
-                    "Polish"
-                ]
+                "displayName": "CukierDev",
+                "roles": ["Polish"]
             },
             {
                 "usernames": ["avishekrijal"],
-                "roles": [
-                    "Nepalese"
-                ]
+                "displayName": "avishekrijal",
+                "roles": ["Nepalese"]
             },
             {
                 "usernames": ["5jd"],
-                "roles": [
-                    "French"
-                ]
+                "displayName": "5jd",
+                "roles": ["French"]
             },
             {
                 "usernames": ["emal0n"],
-                "roles": [
-                    "Brazil"
-                ]
+                "displayName": "emal0n",
+                "roles": ["Brazil"]
             },
             {
                 "usernames": ["LPCC12"],
-                "roles": [
-                    "Portuguese"
-                ]
+                "displayName": "LPCC12",
+                "roles": ["Portuguese"]
             },
             {
                 "usernames": ["dvirzxc"],
-                "roles": [
-                    "Catalan"
-                ]
+                "displayName": "dvirzxc",
+                "roles": ["Catalan"]
             },
             {
                 "usernames": ["zrvpuna"],
-                "roles": [
-                    "Japanese"
-                ]
+                "displayName": "zrvpuna",
+                "roles": ["Japanese"]
+            },
+            {
+                "usernames": ["RikyPy", "M0d-4"],
+                "displayName": "RikyPy & Mod4",
+                "roles": ["Arabic (Egypt)"]
             },
             {
                 "usernames": ["RikyPy"],
+                "displayName": "RikyPy",
                 "roles": [
-                    "Arabic (Egypt, DeepL)",
                     "Hungarian (DeepL)",
                     "Romanian"
                 ]
             },
             {
                 "usernames": ["Orafilynie"],
-                "roles": [
-                    "French"
-                ]
+                "displayName": "Orafilynie",
+                "roles": ["French"]
             }
         ]
     }
