@@ -26,14 +26,26 @@ private class LrclibTLSDelegate: NSObject, URLSessionTaskDelegate {
         //
         // SecTrustGetCertificateAtIndex is deprecated in iOS 15 and returns nil on
         // iOS 16+ / iOS 26+. Use SecTrustCopyCertificateChain where available.
+        //
+        // FIX: SecTrustCopyCertificateChain returns a plain CFTypeRef/CFArray on
+        // iOS 26; the Swift conditional cast `as? [SecCertificate]` can silently
+        // return nil on some OS builds when the bridging isn't automatic.
+        // Use CFArrayGetCount / CFArrayGetValueAtIndex to extract the chain safely.
         let certChain: [SecCertificate]
         if #available(iOS 15.0, *) {
-            guard let chainRef = SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
-                  !chainRef.isEmpty else {
+            guard let chainRef = SecTrustCopyCertificateChain(serverTrust) else {
                 completionHandler(.cancelAuthenticationChallenge, nil)
                 return
             }
-            certChain = chainRef
+            let count = CFArrayGetCount(chainRef)
+            guard count > 0 else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+            certChain = (0..<count).compactMap { i in
+                CFArrayGetValueAtIndex(chainRef, i)
+                    .map { Unmanaged<SecCertificate>.fromOpaque($0).takeUnretainedValue() }
+            }
         } else {
             let count = SecTrustGetCertificateCount(serverTrust)
             guard count > 0 else {
@@ -100,8 +112,11 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.httpAdditionalHeaders = [
             "User-Agent": "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify"
         ]
-        configuration.timeoutIntervalForRequest = 4
-        configuration.timeoutIntervalForResource = 4
+        // FIX: 4 seconds is far too short — LRCLIB can be slow to respond,
+        // and the IPv4-direct attempt + fallback each consumed the full 4s in
+        // the debug log, causing guaranteed timeouts. Use 10s instead.
+        configuration.timeoutIntervalForRequest = 10
+        configuration.timeoutIntervalForResource = 10
         configuration.allowsExpensiveNetworkAccess = true
         configuration.allowsConstrainedNetworkAccess = true
         configuration.waitsForConnectivity = false
