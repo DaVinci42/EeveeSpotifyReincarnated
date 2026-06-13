@@ -4,9 +4,10 @@ struct ContributorRow: View {
     let contributor: EeveeContributor
 
     var body: some View {
-        if contributor.usernames.count > 1 {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
+            // Avatar(s) + name(s)
+            HStack(spacing: 6) {
+                if contributor.usernames.count > 1 {
                     ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
                         if index > 0 {
                             Text("&")
@@ -21,42 +22,60 @@ struct ContributorRow: View {
                                 .font(.headline)
                         }
                     }
+                } else {
+                    ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                    Text(contributor.displayName ?? contributor.usernames[0])
+                        .font(.headline)
                 }
+            }
+
+            // Roles
+            if let richRoles = contributor.richRoles {
+                // Rich roles: show co-contributors inline per role
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(richRoles, id: \.name) { role in
+                        HStack(spacing: 4) {
+                            if let coUsernames = role.coUsernames, !coUsernames.isEmpty {
+                                ForEach(Array(coUsernames.enumerated()), id: \.offset) { index, username in
+                                    ImageView(urlString: "https://github.com/\(username).png")
+                                        .frame(width: 14, height: 14)
+                                        .clipShape(Circle())
+                                    Text(role.coDisplayNames?[safe: index] ?? username)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text("·")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            Text(role.name)
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            } else {
                 Text(contributor.roles.joined(separator: ", "))
                     .font(.subheadline)
                     .foregroundColor(.gray)
             }
-            .padding(.vertical, 4)
-        } else {
-            HStack(spacing: 12) {
-                ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(contributor.displayName ?? contributor.usernames[0])
-                        .font(.headline)
-                    Text(contributor.roles.joined(separator: ", "))
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-            }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
     }
 
     private func nameFor(index: Int, username: String) -> String {
-        guard let displayName = contributor.displayName else {
-            return username
-        }
-        if contributor.usernames.count == 1 {
-            return displayName
-        }
+        guard let displayName = contributor.displayName else { return username }
+        if contributor.usernames.count == 1 { return displayName }
         let parts = displayName.components(separatedBy: " & ")
-        if index < parts.count {
-            return parts[index]
-        }
-        return username
+        return index < parts.count ? parts[index] : username
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 
