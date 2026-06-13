@@ -6,48 +6,32 @@
             {
                 "usernames": ["jaydenjcpy"],
                 "displayName": "jaydenjcpy",
-                "roles": [
-                    "Current Maintainer",
-                    "Developer"
-                ]
+                "roles": ["Current Maintainer", "Developer"]
             },
             {
                 "usernames": ["faroukbmiled"],
                 "displayName": "faroukbmiled",
-                "roles": [
-                    "Collaborator",
-                    "Developer"
-                ]
+                "roles": ["Collaborator", "Developer"]
             },
             {
                 "usernames": ["M0d-4"],
                 "displayName": "Mod4",
-                "roles": [
-                    "Collaborator",
-                    "Developer"
-                ]
+                "roles": ["Collaborator", "Developer"]
             },
             {
                 "usernames": ["Meeep1"],
                 "displayName": "Meeep1",
-                "roles": [
-                    "EeveeSpotifyRevivedPublic Developer"
-                ]
+                "roles": ["EeveeSpotifyRevivedPublic Developer"]
             },
             {
                 "usernames": ["whoeevee"],
                 "displayName": "whoeevee",
-                "roles": [
-                    "Original Creator",
-                    "Former Developer"
-                ]
+                "roles": ["Original Creator", "Former Developer"]
             },
             {
                 "usernames": ["asdfzxcvbn"],
                 "displayName": "asdfzxcvbn",
-                "roles": [
-                    "Former Collaborator"
-                ]
+                "roles": ["Former Collaborator"]
             }
         ]
     },
@@ -166,12 +150,17 @@
                 "roles": ["Japanese"]
             },
             {
-                "usernames": ["RikyPy", "M0d-4"],
-                "displayName": "RikyPy & Mod4 (Egyptian arabic only)",
-                "roles": [
-                    "Arabic (Egyptian, DeepL)",
-                    "Hungarian (DeepL)",
-                    "Romanian"
+                "usernames": ["RikyPy"],
+                "displayName": "RikyPy",
+                "roles": ["Arabic (Egypt)", "Hungarian (DeepL)", "Romanian"],
+                "richRoles": [
+                    {
+                        "name": "Arabic (Egypt)",
+                        "coUsernames": ["M0d-4"],
+                        "coDisplayNames": ["Mod4"]
+                    },
+                    { "name": "Hungarian (DeepL)" },
+                    { "name": "Romanian" }
                 ]
             },
             {
