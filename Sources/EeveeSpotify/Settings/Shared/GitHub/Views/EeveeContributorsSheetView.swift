@@ -67,7 +67,7 @@ struct ContributorRow: View {
                         HStack(spacing: 0) {
                             ForEach(Array(contributor.roles.enumerated()), id: \.offset) { index, role in
                                 if index > 0 {
-                                    Text(", ")
+                                    Text("  ·  ")
                                         .font(.subheadline)
                                         .foregroundColor(.gray)
                                 }
@@ -158,6 +158,8 @@ struct EeveeContributorsSheetView: View {
                     let contributors = section.shuffled ? section.contributors.shuffled() : section.contributors
                     ForEach(contributors, id: \.usernames) { contributor in
                         ContributorRow(contributor: contributor)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     }
                 }
             }
