@@ -1,5 +1,61 @@
 import Foundation
 
+private class LrclibTLSDelegate: NSObject, URLSessionTaskDelegate {
+    let expectedHost: String
+
+    init(expectedHost: String) {
+        self.expectedHost = expectedHost
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        // Validate the certificate against the original hostname (for SNI/cert
+        // matching) even though the connection is made directly to an IPv4 address.
+        let policy = SecPolicyCreateSSL(true, expectedHost as CFString)
+        SecTrustSetPolicies(serverTrust, policy)
+
+        var error: CFError?
+        if SecTrustEvaluateWithError(serverTrust, &error) {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
+    }
+}
+
+private func resolveIPv4(_ host: String) -> String? {
+    var hints = addrinfo(
+        ai_flags: 0, ai_family: AF_INET, ai_socktype: SOCK_STREAM,
+        ai_protocol: 0, ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil
+    )
+    var result: UnsafeMutablePointer<addrinfo>?
+
+    guard getaddrinfo(host, nil, &hints, &result) == 0, let addr = result else {
+        return nil
+    }
+    defer { freeaddrinfo(result) }
+
+    var ipBuffer = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
+    let sockaddrIn = addr.pointee.ai_addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0 }
+    var sinAddr = sockaddrIn.pointee.sin_addr
+
+    guard inet_ntop(AF_INET, &sinAddr, &ipBuffer, socklen_t(INET6_ADDRSTRLEN)) != nil else {
+        return nil
+    }
+
+    return String(cString: ipBuffer)
+}
+
 class LrclibLyricsRepository: LyricsRepository {
     var apiUrl: String
     private let session: URLSession
@@ -11,23 +67,21 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.httpAdditionalHeaders = [
             "User-Agent": "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify"
         ]
-        configuration.timeoutIntervalForRequest = 5
-        configuration.timeoutIntervalForResource = 5
+        configuration.timeoutIntervalForRequest = 4
+        configuration.timeoutIntervalForResource = 4
         configuration.allowsExpensiveNetworkAccess = true
         configuration.allowsConstrainedNetworkAccess = true
         configuration.waitsForConnectivity = false
-        configuration.connectionProxyDictionary = [
-            "HTTPEnable": 0,
-            "HTTPSEnable": 0,
-            "SOCKSEnable": 0
-        ]
-        let originalProtocols = configuration.protocolClasses ?? []
-        writeDebugLog("[LRCLIB] Registered URLProtocols: \(originalProtocols.map { String(describing: $0) })")
-        configuration.protocolClasses = originalProtocols.filter {
-            String(describing: $0).hasPrefix("__NS") || String(describing: $0).hasPrefix("_NS")
+
+        if let host = URL(string: apiUrl)?.host {
+            session = URLSession(
+                configuration: configuration,
+                delegate: LrclibTLSDelegate(expectedHost: host),
+                delegateQueue: nil
+            )
+        } else {
+            session = URLSession(configuration: configuration)
         }
-        
-        session = URLSession(configuration: configuration)
     }
     
     static let originalApiUrl = "https://lrclib.net/api"
@@ -47,7 +101,29 @@ class LrclibLyricsRepository: LyricsRepository {
             stringUrl += "?\(queryString)"
         }
         
-        let request = URLRequest(url: URL(string: stringUrl)!)
+        guard let url = URL(string: stringUrl) else {
+            throw LyricsError.decodingError
+        }
+
+        var request = URLRequest(url: url)
+
+        // Some networks have broken/unroutable IPv6 paths to lrclib.net that cause
+        // ETIMEDOUT at the TCP layer for custom URLSession instances. Resolve to
+        // an IPv4 address explicitly and connect to it directly (TLS hostname
+        // validation against the original host is handled by LrclibTLSDelegate).
+        if let host = url.host, let ip = resolveIPv4(host) {
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.host = ip
+            if let ipUrl = components?.url {
+                request = URLRequest(url: ipUrl)
+                request.setValue(host, forHTTPHeaderField: "Host")
+            }
+        }
+
+        request.setValue(
+            "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify",
+            forHTTPHeaderField: "User-Agent"
+        )
 
         let semaphore = DispatchSemaphore(value: 0)
         var data: Data?
@@ -61,6 +137,27 @@ class LrclibLyricsRepository: LyricsRepository {
 
         task.resume()
         semaphore.wait()
+
+        if error != nil, request.url != url {
+            // IPv4-direct attempt failed; retry with the original hostname URL.
+            writeDebugLog("[LRCLIB] IPv4-direct attempt failed (\(error!)), retrying via hostname")
+
+            let fallbackSemaphore = DispatchSemaphore(value: 0)
+            var fallbackRequest = URLRequest(url: url)
+            fallbackRequest.setValue(
+                "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify",
+                forHTTPHeaderField: "User-Agent"
+            )
+
+            let fallbackTask = session.dataTask(with: fallbackRequest) { response, _, err in
+                error = err
+                data = response
+                fallbackSemaphore.signal()
+            }
+
+            fallbackTask.resume()
+            fallbackSemaphore.wait()
+        }
 
         if let error = error {
             writeDebugLog("[LRCLIB] Request error for \(stringUrl): \(error)")
