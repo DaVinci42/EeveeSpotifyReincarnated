@@ -167,8 +167,12 @@
             },
             {
                 "usernames": ["RikyPy", "M0d-4"],
-                "displayName": "RikyPy & Mod4",
-                "roles": ["Arabic (Egypt)"]
+                "displayName": "RikyPy & Mod4 (Egyptian arabic only)",
+                "roles": [
+                    "Arabic (Egyptian, DeepL)",
+                    "Hungarian (DeepL)",
+                    "Romanian"
+                ]
             },
             {
                 "usernames": ["RikyPy"],
