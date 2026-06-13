@@ -7,13 +7,20 @@ class LrclibLyricsRepository: LyricsRepository {
     private init(apiUrl: String) {
         self.apiUrl = apiUrl
         
-        let configuration = URLSessionConfiguration.default
+        let configuration = URLSessionConfiguration.ephemeral
         configuration.httpAdditionalHeaders = [
             "User-Agent": "EeveeSpotify v\(EeveeSpotify.version) https://github.com/whoeevee/EeveeSpotify"
         ]
         configuration.timeoutIntervalForRequest = 5
         configuration.timeoutIntervalForResource = 5
-        configuration.connectionProxyDictionary = [:]
+        configuration.allowsExpensiveNetworkAccess = true
+        configuration.allowsConstrainedNetworkAccess = true
+        configuration.waitsForConnectivity = false
+        configuration.connectionProxyDictionary = [
+            kCFNetworkProxiesHTTPEnable as String: 0,
+            kCFNetworkProxiesHTTPSEnable as String: 0,
+            "SOCKSEnable": 0
+        ]
         let originalProtocols = configuration.protocolClasses ?? []
         writeDebugLog("[LRCLIB] Registered URLProtocols: \(originalProtocols.map { String(describing: $0) })")
         configuration.protocolClasses = originalProtocols.filter {
