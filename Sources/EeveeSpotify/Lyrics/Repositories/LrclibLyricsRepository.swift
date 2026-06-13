@@ -17,8 +17,8 @@ class LrclibLyricsRepository: LyricsRepository {
         configuration.allowsConstrainedNetworkAccess = true
         configuration.waitsForConnectivity = false
         configuration.connectionProxyDictionary = [
-            kCFNetworkProxiesHTTPEnable as String: 0,
-            kCFNetworkProxiesHTTPSEnable as String: 0,
+            "HTTPEnable": 0,
+            "HTTPSEnable": 0,
             "SOCKSEnable": 0
         ]
         let originalProtocols = configuration.protocolClasses ?? []
