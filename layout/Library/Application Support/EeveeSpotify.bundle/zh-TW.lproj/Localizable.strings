@@ -32,6 +32,9 @@ patching_description = "EeveeSpotify 會即時攔截使用者資料，將起反�
 overwrite_configuration = "覆寫配置";
 overwrite_configuration_description = "將遠端配置以 Premium 配置覆寫，該配置定義了大部分 UI/UX 參數。儘管可能導致一些問題，但大概率對您很有幫助。例如：該配置可能過時而導致無法啟用新功能、致使 Spotify 崩潰等等。";
 
+true_shuffle = "真隨機";
+true_shuffle_dec = "阻止 Spotify 的智慧型隨機播放將歌曲加入隨機播放清單。";
+
 // 歌詞
 
 do_not_replace_lyrics = "使用原生歌詞";
