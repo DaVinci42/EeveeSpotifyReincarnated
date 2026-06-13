@@ -8,12 +8,17 @@ struct EeveeContributorView: View {
         VStack {
             Link(destination: URL(string: githubUser.htmlUrl)!) {
                 HStack(spacing: 10) {
-                    ImageView(urlString: githubUser.avatarUrl)
-                        .frame(width: 48, height: 48)
-                        .clipShape(Circle())
+                    HStack(spacing: -8) {
+                        ForEach(contributor.usernames, id: \.self) { username in
+                            ImageView(urlString: "https://github.com/\(username).png")
+                                .frame(width: 48, height: 48)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
+                        }
+                    }
                     
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(contributor.username)
+                        Text(contributor.usernames.joined(separator: " & "))
                             .foregroundColor(.white)
                             .font(.headline)
                         
