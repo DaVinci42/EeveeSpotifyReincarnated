@@ -6,7 +6,6 @@ struct ContributorRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
             if contributor.usernames.count > 1 {
-                // Multiple users: inline [pfp] name & [pfp] name at text size
                 ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
                     if index > 0 {
                         Text("&")
@@ -22,7 +21,6 @@ struct ContributorRow: View {
                     }
                 }
             } else {
-                // Single user: normal large avatar + name
                 ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
                     .frame(width: 40, height: 40)
                     .clipShape(Circle())
@@ -80,6 +78,7 @@ extension View {
 struct EeveeContributorsSheetView: View {
     @State private var sections: [EeveeContributorSection] = []
     @State private var isLoading = true
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         NavigationView {
@@ -104,6 +103,24 @@ struct EeveeContributorsSheetView: View {
     private var contentView: some View {
         if isLoading {
             ProgressView("Loading".uiKitLocalized)
+        } else if let error = errorMessage {
+            VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.largeTitle)
+                    .foregroundColor(.orange)
+                Text("Failed to load contributors")
+                    .font(.headline)
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button("Retry") {
+                    isLoading = true
+                    errorMessage = nil
+                    loadContributors()
+                }
+            }
         } else if sections.isEmpty {
             Text("No contributors found")
                 .foregroundColor(.gray)
@@ -131,6 +148,7 @@ struct EeveeContributorsSheetView: View {
                 sections = try await GitHubHelper.shared.getEeveeContributorSections()
             } catch {
                 print("Failed to load contributors: \(error)")
+                errorMessage = error.localizedDescription
             }
             isLoading = false
         }
