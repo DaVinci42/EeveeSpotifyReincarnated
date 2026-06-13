@@ -23,21 +23,28 @@ private class LrclibTLSDelegate: NSObject, URLSessionTaskDelegate {
         // against the original hostname. Re-using and mutating the trust object
         // supplied by URLSession for a raw-IP connection can fail chain building
         // (errSSLXCertChainInvalid / -9802) even when the certificate is valid.
-        let certCount = SecTrustGetCertificateCount(serverTrust)
-        guard certCount > 0 else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-
-        var certChain: [SecCertificate] = []
-        for i in 0..<certCount {
-            if let cert = SecTrustGetCertificateAtIndex(serverTrust, i) {
-                certChain.append(cert)
+        //
+        // SecTrustGetCertificateAtIndex is deprecated in iOS 15 and returns nil on
+        // iOS 16+ / iOS 26+. Use SecTrustCopyCertificateChain where available.
+        let certChain: [SecCertificate]
+        if #available(iOS 15.0, *) {
+            guard let chainRef = SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
+                  !chainRef.isEmpty else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
             }
-        }
-        guard !certChain.isEmpty else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
+            certChain = chainRef
+        } else {
+            let count = SecTrustGetCertificateCount(serverTrust)
+            guard count > 0 else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+            certChain = (0..<count).compactMap { SecTrustGetCertificateAtIndex(serverTrust, $0) }
+            guard !certChain.isEmpty else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
         }
 
         let policy = SecPolicyCreateSSL(true, expectedHost as CFString)
@@ -155,9 +162,9 @@ class LrclibLyricsRepository: LyricsRepository {
         var data: Data?
         var error: Error?
 
-        let task = session.dataTask(with: request) { response, _, err in
+        let task = session.dataTask(with: request) { responseData, _, err in
             error = err
-            data = response
+            data = responseData
             semaphore.signal()
         }
 
