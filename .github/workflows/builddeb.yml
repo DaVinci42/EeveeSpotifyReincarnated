@@ -72,7 +72,7 @@ jobs:
           REPO_SLUG: ${{ github.repository }}
         run: |
           make clean || true
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="arm64"
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="rootless"
           ls -la packages || true
 
       - name: Save arm64 artifact
