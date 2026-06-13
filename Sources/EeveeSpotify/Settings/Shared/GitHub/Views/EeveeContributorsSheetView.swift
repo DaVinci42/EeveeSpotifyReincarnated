@@ -4,10 +4,10 @@ struct ContributorRow: View {
     let contributor: EeveeContributor
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Avatar(s) + name(s)
-            HStack(spacing: 6) {
-                if contributor.usernames.count > 1 {
+        if contributor.usernames.count > 1 {
+            // Multiple main contributors: inline [pfp] name & [pfp] name
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
                         if index > 0 {
                             Text("&")
@@ -22,47 +22,56 @@ struct ContributorRow: View {
                                 .font(.headline)
                         }
                     }
-                } else {
-                    ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
-                        .frame(width: 40, height: 40)
-                        .clipShape(Circle())
+                }
+                Text(contributor.roles.joined(separator: ", "))
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            .padding(.vertical, 4)
+        } else {
+            // Single contributor: pfp on left, name + roles stacked on right
+            HStack(alignment: .top, spacing: 12) {
+                ImageView(urlString: "https://github.com/\(contributor.usernames[0]).png")
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
                     Text(contributor.displayName ?? contributor.usernames[0])
                         .font(.headline)
-                }
-            }
 
-            // Roles
-            if let richRoles = contributor.richRoles {
-                // Rich roles: show co-contributors inline per role
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(richRoles, id: \.name) { role in
-                        HStack(spacing: 4) {
-                            if let coUsernames = role.coUsernames, !coUsernames.isEmpty {
-                                ForEach(Array(coUsernames.enumerated()), id: \.offset) { index, username in
-                                    ImageView(urlString: "https://github.com/\(username).png")
-                                        .frame(width: 14, height: 14)
-                                        .clipShape(Circle())
-                                    Text(role.coDisplayNames?[safe: index] ?? username)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("·")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                    if let richRoles = contributor.richRoles {
+                        ForEach(richRoles, id: \.name) { role in
+                            HStack(spacing: 6) {
+                                Text(role.name)
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+
+                                if let coUsernames = role.coUsernames, !coUsernames.isEmpty {
+                                    Spacer()
+                                    ForEach(Array(coUsernames.enumerated()), id: \.offset) { index, username in
+                                        HStack(spacing: 4) {
+                                            ImageView(urlString: "https://github.com/\(username).png")
+                                                .frame(width: 16, height: 16)
+                                                .clipShape(Circle())
+                                            Text(role.coDisplayNames?[safe: index] ?? username)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
                             }
-                            Text(role.name)
+                        }
+                    } else {
+                        ForEach(contributor.roles, id: \.self) { role in
+                            Text(role)
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                         }
                     }
                 }
-            } else {
-                Text(contributor.roles.joined(separator: ", "))
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
             }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
     }
 
     private func nameFor(index: Int, username: String) -> String {
