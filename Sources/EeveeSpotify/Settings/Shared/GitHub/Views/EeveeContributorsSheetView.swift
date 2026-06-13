@@ -10,7 +10,6 @@ struct ContributorRow: View {
                 HStack(spacing: 6) {
                     ForEach(Array(contributor.usernames.enumerated()), id: \.offset) { index, username in
                         if index > 0 {
-                            // Fix 3: "&" same font and color as contributor names
                             Text("&")
                                 .font(.headline)
                                 .foregroundColor(.white)
@@ -47,7 +46,6 @@ struct ContributorRow: View {
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
 
-                                // Fix 1: co-contributor sits right after role text, no Spacer
                                 if let coUsernames = role.coUsernames, !coUsernames.isEmpty {
                                     ForEach(Array(coUsernames.enumerated()), id: \.offset) { index, username in
                                         HStack(spacing: 4) {
@@ -63,7 +61,6 @@ struct ContributorRow: View {
                             }
                         }
                     } else {
-                        // Fix 2: roles with no co-contributor shown side by side in one row
                         HStack(spacing: 0) {
                             ForEach(Array(contributor.roles.enumerated()), id: \.offset) { index, role in
                                 if index > 0 {
@@ -94,6 +91,16 @@ struct ContributorRow: View {
 extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+private struct FullWidthSeparatorModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+        } else {
+            content
+        }
     }
 }
 
@@ -159,7 +166,7 @@ struct EeveeContributorsSheetView: View {
                     ForEach(contributors, id: \.usernames) { contributor in
                         ContributorRow(contributor: contributor)
                             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                            .modifier(FullWidthSeparatorModifier())
                     }
                 }
             }
