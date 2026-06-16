@@ -96,15 +96,15 @@ To open Spotify links in sideloaded app, use [OpenSpotifySafariExtension](https:
 ## Credits
 Thanks for all of the community's support, also, thanks to all the devs who worked along with me to revive this project Go check the other dev's out:
 
-[Ryuk](https://github.com/faroukbmiled) - True Shuffle, App Icon, Support for Spotify v9.1.46 and above 
+[Ryuk](https://github.com/faroukbmiled) 
 
-[Mod4](https://github.com/M0d-4) - Custom Lyrics, iPadUI fix 
+[Mod4](https://github.com/M0d-4)
 
-[estrogencat](https://github.com/estrogencat) - Icon Fixes 
+[estrogencat](https://github.com/estrogencat)
 
-[Skye](https://github.com/Meeep1) - EeveeSpotifyRevivedPublic, the base of this project 
+[Skye](https://github.com/Meeep1) 
 
-[whoeevee](https://github.com/whoeevee) - EeveeSpotify & EeveeSpotifyReborn, where all this started
+[whoeevee](https://github.com/whoeevee) 
 
 
 
