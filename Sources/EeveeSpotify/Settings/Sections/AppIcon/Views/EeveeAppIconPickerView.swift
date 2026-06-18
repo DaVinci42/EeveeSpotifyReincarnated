@@ -97,7 +97,11 @@ struct EeveeAppIconPickerView: View {
         for key in alternates.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
             let info = alternates[key] as? [String: Any]
             let files = info?["CFBundleIconFiles"] as? [String] ?? [key]
-            entries.append(AppIconEntry(id: key, title: key, alternateName: key, iconFiles: files))
+            // Use the plist key as the display title but convert underscores and
+            // camel-case word boundaries to spaces so names like "My_Icon" or
+            // "MyCustomIcon" render as "My Icon" / "My Custom Icon".
+            let displayTitle = Self.prettifyIconKey(key)
+            entries.append(AppIconEntry(id: key, title: displayTitle, alternateName: key, iconFiles: files))
         }
         icons = entries
         selectedKey = currentSelectedKey()
@@ -133,6 +137,38 @@ struct EeveeAppIconPickerView: View {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    /// Converts a raw plist key like "MyCustomIcon", "My_Custom_Icon", or
+    /// "My Custom Icon" into a readable display title with spaces between words.
+    /// - Replaces underscores and hyphens with spaces.
+    /// - Inserts a space before each uppercase letter that follows a lowercase
+    ///   letter or digit (camelCase / PascalCase boundary detection).
+    /// - Collapses any run of multiple spaces into a single space.
+    static func prettifyIconKey(_ key: String) -> String {
+        var result = key
+        // Replace underscores and hyphens with spaces first.
+        result = result.replacingOccurrences(of: "_", with: " ")
+        result = result.replacingOccurrences(of: "-", with: " ")
+        // Insert space at camelCase boundaries: lowercase/digit → uppercase.
+        var spaced = ""
+        let chars = Array(result)
+        for i in chars.indices {
+            let c = chars[i]
+            if i > 0, c.isUppercase {
+                let prev = chars[i - 1]
+                if prev.isLowercase || prev.isNumber {
+                    spaced.append(" ")
+                } else if i + 1 < chars.count, chars[i + 1].isLowercase, prev.isUppercase {
+                    // Handle acronyms like "NPVScrollViewController" → "NPV Scroll View Controller"
+                    spaced.append(" ")
+                }
+            }
+            spaced.append(c)
+        }
+        // Collapse multiple spaces into one and trim.
+        let components = spaced.components(separatedBy: " ").filter { !$0.isEmpty }
+        return components.joined(separator: " ")
     }
 
     private static func image(for icon: AppIconEntry) -> UIImage? {
