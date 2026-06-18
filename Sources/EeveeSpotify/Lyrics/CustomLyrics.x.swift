@@ -291,15 +291,49 @@ private func loadCustomLyricsForCurrentTrack() throws -> Lyrics {
     return lyrics
 }
 
-// MARK: - Lyrics cache
-// Caches the most recently fetched lyrics data per track ID so that the full
-// lyrics view (which Spotify loads with a second identical request shortly after
-// the preview widget request) returns instantly rather than re-fetching.
+// MARK: - Lyrics cache + prefetch
+// Caches the most recently fetched lyrics data per track ID so that:
+//   1. The full lyrics view (second request) returns instantly from cache.
+//   2. The *first* lyrics request also returns instantly if a prefetch
+//      was triggered early enough (on track URI observation).
 private struct LyricsCacheEntry {
     let data: Data
     let trackId: String
 }
 private var lyricsCache: LyricsCacheEntry?
+
+// Track ID currently being prefetched, to avoid duplicate background fetches.
+private var prefetchingTrackId: String?
+
+/// Kicks off a background lyrics fetch for `trackId` so the cache is warm
+/// before Spotify fires its `/color-lyrics/v2` request.
+/// Safe to call multiple times — duplicate calls for the same track are ignored.
+func prefetchLyricsIfNeeded(trackId: String) {
+    guard UserDefaults.lyricsSource.isReplacingLyrics else { return }
+    // Already cached or already fetching — nothing to do.
+    if let entry = lyricsCache, entry.trackId == trackId { return }
+    if prefetchingTrackId == trackId { return }
+
+    prefetchingTrackId = trackId
+    writeDebugLog("[Lyrics] prefetch start for \(trackId)")
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        defer {
+            if prefetchingTrackId == trackId {
+                prefetchingTrackId = nil
+            }
+        }
+        // Build the fake URL path that getLyricsDataForCurrentTrack expects.
+        let fakePath = "/color-lyrics/v2/track/\(trackId)"
+        if let data = try? getLyricsDataForCurrentTrack(fakePath, originalLyrics: nil) {
+            writeDebugLog("[Lyrics] prefetch complete for \(trackId)")
+            // storeLyricsCache is already called inside getLyricsDataForCurrentTrack.
+            _ = data
+        } else {
+            writeDebugLog("[Lyrics] prefetch failed for \(trackId)")
+        }
+    }
+}
 
 /// Returns cached lyrics data for the given track ID if available.
 func cachedLyricsData(for trackId: String) -> Data? {
@@ -314,9 +348,10 @@ func storeLyricsCache(data: Data, trackId: String) {
     lyricsCache = LyricsCacheEntry(data: data, trackId: trackId)
 }
 
-/// Clears the cache (called on track change).
+/// Clears the cache and any in-flight prefetch marker (called on track change).
 func clearLyricsCache() {
     lyricsCache = nil
+    prefetchingTrackId = nil
 }
 
 /// Returns a serialized empty `Lyrics` protobuf payload.
