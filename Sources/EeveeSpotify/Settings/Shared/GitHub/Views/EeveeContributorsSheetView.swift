@@ -62,7 +62,7 @@ struct ContributorRow: View {
                                                 .frame(width: 22, height: 22)
                                                 .clipShape(Circle())
                                             Text(role.coDisplayNames?[safe: index] ?? username)
-                                                .font(.title3).bold()
+                                                .font(.body).bold()
                                                 .foregroundColor(.white)
                                         }
                                     }
