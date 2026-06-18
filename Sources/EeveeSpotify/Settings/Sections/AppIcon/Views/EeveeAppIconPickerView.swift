@@ -97,11 +97,16 @@ struct EeveeAppIconPickerView: View {
         for key in alternates.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
             let info = alternates[key] as? [String: Any]
             let files = info?["CFBundleIconFiles"] as? [String] ?? [key]
-            // Use the plist key as the display title but convert underscores and
-            // camel-case word boundaries to spaces so names like "My_Icon" or
-            // "MyCustomIcon" render as "My Icon" / "My Custom Icon".
+            // Use the plist key as the display title but convert underscores,
+            // hyphens, camelCase boundaries, and parentheses to readable spaces.
             let displayTitle = Self.prettifyIconKey(key)
-            entries.append(AppIconEntry(id: key, title: displayTitle, alternateName: key, iconFiles: files))
+            // Use the first CFBundleIconFiles entry as the alternateName passed to
+            // setAlternateIconName. iOS resolves icons by the plist key — but on
+            // sideloaded/jailbroken builds, keys with spaces or parentheses can fail.
+            // Using the actual icon filename stem is a reliable fallback; if files is
+            // empty we fall back to the raw key.
+            let alternateName = files.first ?? key
+            entries.append(AppIconEntry(id: key, title: displayTitle, alternateName: alternateName, iconFiles: files))
         }
         icons = entries
         selectedKey = currentSelectedKey()
@@ -139,17 +144,20 @@ struct EeveeAppIconPickerView: View {
         }
     }
 
-    /// Converts a raw plist key like "MyCustomIcon", "My_Custom_Icon", or
-    /// "My Custom Icon" into a readable display title with spaces between words.
+    /// Converts a raw plist key like "MyCustomIcon", "My_Custom_Icon",
+    /// "My-Custom-Icon", or "MyIcon(Dark)" into a readable display title.
     /// - Replaces underscores and hyphens with spaces.
     /// - Inserts a space before each uppercase letter that follows a lowercase
     ///   letter or digit (camelCase / PascalCase boundary detection).
-    /// - Collapses any run of multiple spaces into a single space.
+    /// - Inserts a space before `(` when not already preceded by one.
+    /// - Collapses any run of multiple spaces into a single space and trims.
     static func prettifyIconKey(_ key: String) -> String {
         var result = key
-        // Replace underscores and hyphens with spaces first.
+        // Replace underscores and hyphens with spaces.
         result = result.replacingOccurrences(of: "_", with: " ")
         result = result.replacingOccurrences(of: "-", with: " ")
+        // Insert space before `(` when not already preceded by a space.
+        result = result.replacingOccurrences(of: "(", with: " (")
         // Insert space at camelCase boundaries: lowercase/digit → uppercase.
         var spaced = ""
         let chars = Array(result)
@@ -160,7 +168,7 @@ struct EeveeAppIconPickerView: View {
                 if prev.isLowercase || prev.isNumber {
                     spaced.append(" ")
                 } else if i + 1 < chars.count, chars[i + 1].isLowercase, prev.isUppercase {
-                    // Handle acronyms like "NPVScrollViewController" → "NPV Scroll View Controller"
+                    // Handle acronym boundaries: "NPVScrollView" → "NPV Scroll View"
                     spaced.append(" ")
                 }
             }
