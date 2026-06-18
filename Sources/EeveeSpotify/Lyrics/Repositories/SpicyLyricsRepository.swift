@@ -5,26 +5,39 @@ import Foundation
 // Fetches lyrics from api.spicylyrics.org (the SpicyLyrics / nontitled backend)
 // and converts the response into EeveeSpotify's LyricsDto.
 //
-// The API is identical to what the Spicetify extension uses:
-//   POST https://api.spicylyrics.org/query
-//   Body: { queries: [{ operation: "lyrics", variables: { id: <trackId>, auth: "<headerName>" } }],
-//           client: { version: "..." } }
-//   Header: "<headerName>": "Bearer <spotifyToken>"
+// ── iOS 27 / Spotify 9.1.60 crash fix ──────────────────────────────────────
+// The original implementation used URLSession.shared. On iOS 27 beta, Spotify
+// 9.1.60 has adopted strict Swift Concurrency (@MainActor enforcement) in its
+// lyrics rendering path. When lyrics arrive and Spotify starts rendering via
+// DispatchQueue.concurrentPerform, any work that touches @MainActor-isolated
+// state from a worker thread trips _swift_task_checkIsolatedSwift and causes a
+// fatal SIGTRAP (EXC_BREAKPOINT / brk 1).
 //
-// The `data` field in each query result is an SLObjPack-encoded value (a two-element
-// JSON array [valuesList, stream]) which we decode with SLObjPack.swift.
-//
-// Supported lyrics types: "Syllable" (word-level karaoke), "Line" (timestamp per line),
-// "Static" (no timestamps). Because EeveeSpotify's LyricsDto only supports line-level
-// timing, Syllable lyrics are collapsed — we join syllables and use the lead StartTime.
+// The fix mirrors LrclibLyricsRepository exactly:
+//   • Use a dedicated ephemeral URLSession instead of URLSession.shared.
+//   • Set a generous timeout (15s) so the call doesn't ghost on slow networks.
+//   • Ensure all response processing (SLObjPack decode, LyricsDto construction)
+//     completes fully before returning, so Spotify's rendering path receives
+//     a plain value type with no deferred/lazy work that could later be
+//     evaluated on the wrong executor.
 
 class SpicyLyricsRepository: LyricsRepository {
 
     static let shared = SpicyLyricsRepository()
-    private init() {}
+    private init() {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest  = 15
+        config.timeoutIntervalForResource = 15
+        config.allowsExpensiveNetworkAccess   = true
+        config.allowsConstrainedNetworkAccess = true
+        config.waitsForConnectivity = false
+        self.session = URLSession(configuration: config)
+    }
+
+    private let session: URLSession
 
     private static let apiUrl        = "https://api.spicylyrics.org"
-    private static let authHeaderKey = "SpicyLyrics-WebAuth"       // name sent in variables.auth
+    private static let authHeaderKey = "SpicyLyrics-WebAuth"
     private static let clientVersion = "EeveeSpotify/1.0"
 
     // MARK: - Network
@@ -34,7 +47,6 @@ class SpicyLyricsRepository: LyricsRepository {
             throw LyricsError.decodingError
         }
 
-        // Build the request body exactly as the JS extension does.
         let body: [String: Any] = [
             "queries": [
                 [
@@ -45,34 +57,28 @@ class SpicyLyricsRepository: LyricsRepository {
                     ]
                 ]
             ],
-            "client": [
-                "version": SpicyLyricsRepository.clientVersion
-            ]
+            "client": ["version": SpicyLyricsRepository.clientVersion]
         ]
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(
-            SpicyLyricsRepository.clientVersion,
-            forHTTPHeaderField: "SpicyLyrics-Version"
-        )
+        request.setValue("application/json",                        forHTTPHeaderField: "Content-Type")
+        request.setValue(SpicyLyricsRepository.clientVersion,      forHTTPHeaderField: "SpicyLyrics-Version")
 
-        // Pass the captured Spotify Bearer token under the key named in variables.auth.
         if let token = spotifyAccessToken {
-            request.setValue(
-                "Bearer \(token)",
-                forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey
-            )
+            request.setValue("Bearer \(token)", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
         }
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
+        // Synchronous wait — identical pattern to LrclibLyricsRepository and
+        // MusixmatchLyricsRepository; getLyrics() is always called off the main
+        // thread by EeveeSpotify's hook, so blocking here is safe.
         let semaphore = DispatchSemaphore(value: 0)
         var responseData: Data?
         var responseError: Error?
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        session.dataTask(with: request) { data, _, error in
             responseData = data
             responseError = error
             semaphore.signal()
@@ -95,8 +101,6 @@ class SpicyLyricsRepository: LyricsRepository {
     // MARK: - Parse
 
     private func parseLyricsData(_ data: Data, trackId: String) throws -> LyricsDto {
-
-        // Decode the outer JSON envelope.
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let queriesRaw = json["queries"] as? [[String: Any]],
@@ -108,55 +112,42 @@ class SpicyLyricsRepository: LyricsRepository {
         }
 
         let httpStatus = result["httpStatus"] as? Int ?? 0
-
         switch httpStatus {
-        case 404:
-            throw LyricsError.noSuchSong
-        case 200:
-            break
+        case 404: throw LyricsError.noSuchSong
+        case 200: break
         default:
-            writeDebugLog("[SpicyLyrics] Unexpected status \(httpStatus) for \(trackId)")
+            writeDebugLog("[SpicyLyrics] Status \(httpStatus) for \(trackId)")
             throw LyricsError.noSuchSong
         }
 
-        guard let rawData = result["data"] else {
-            throw LyricsError.decodingError
-        }
+        guard let rawData = result["data"] else { throw LyricsError.decodingError }
 
-        // Decode the SLObjPack payload.
         let packed: SLObjPackValue
         do {
             packed = try SLObjPack.unpack(rawData)
         } catch {
-            writeDebugLog("[SpicyLyrics] SLObjPack decode error for \(trackId): \(error)")
+            writeDebugLog("[SpicyLyrics] SLObjPack error for \(trackId): \(error)")
             throw LyricsError.decodingError
         }
 
         guard let type = packed["Type"]?.stringValue else {
-            writeDebugLog("[SpicyLyrics] Missing Type field for \(trackId)")
+            writeDebugLog("[SpicyLyrics] Missing Type for \(trackId)")
             throw LyricsError.decodingError
         }
 
-        writeDebugLog("[SpicyLyrics] Lyrics type for \(trackId): \(type)")
+        writeDebugLog("[SpicyLyrics] Type=\(type) for \(trackId)")
 
         switch type {
         case "Syllable": return parseSyllableLyrics(packed)
         case "Line":     return parseLineLyrics(packed)
         case "Static":   return parseStaticLyrics(packed)
         default:
-            writeDebugLog("[SpicyLyrics] Unknown lyrics type '\(type)' for \(trackId)")
+            writeDebugLog("[SpicyLyrics] Unknown type '\(type)' for \(trackId)")
             throw LyricsError.decodingError
         }
     }
 
     // MARK: Syllable lyrics
-    //
-    // SpicyLyrics schema (Type == "Syllable"):
-    //   Content: [{ Type: "Vocal", Lead: { Syllables: [{Text, StartTime, EndTime, ...}],
-    //              StartTime, EndTime, OppositeAligned } }]
-    //
-    // Each top-level Content entry is one lyrics line.
-    // We join its syllable Text values and use the Lead's StartTime as the line offset.
 
     private func parseSyllableLyrics(_ root: SLObjPackValue) -> LyricsDto {
         guard let content = root["Content"]?.arrayValue else { return emptyDto() }
@@ -165,84 +156,60 @@ class SpicyLyricsRepository: LyricsRepository {
         var hasRomanized = root["HasTransliterations"]?.boolValue ?? false
 
         for entry in content {
-            guard
-                entry["Type"]?.stringValue == "Vocal",
-                let lead = entry["Lead"]?.objectValue.map({ SLObjPackValue.object($0) }) ?? entry["Lead"]
-            else { continue }
+            guard entry["Type"]?.stringValue == "Vocal",
+                  let lead = entry["Lead"] else { continue }
 
-            // Join syllable texts into one line string.
             let lineText: String
             if let syllables = lead["Syllables"]?.arrayValue, !syllables.isEmpty {
                 lineText = syllables.compactMap { $0["Text"]?.stringValue }.joined()
-
-                // If any syllable already carries a transliteration, flag it.
-                let hasAnyTranslit = syllables.contains {
-                    ($0["TransliteratedText"]?.stringValue ?? "").isEmpty == false
+                if syllables.contains(where: { ($0["TransliteratedText"]?.stringValue ?? "").isEmpty == false }) {
+                    hasRomanized = true
                 }
-                if hasAnyTranslit { hasRomanized = true }
             } else if let text = lead["Text"]?.stringValue {
                 lineText = text
             } else {
                 continue
             }
 
-            if (lead["TransliteratedText"]?.stringValue ?? "").isEmpty == false {
-                hasRomanized = true
-            }
+            if (lead["TransliteratedText"]?.stringValue ?? "").isEmpty == false { hasRomanized = true }
 
             let offsetMs = lead["StartTime"]?.doubleValue.map { Int($0 * 1000) }
             lines.append(LyricsLineDto(content: lineText.lyricsNoteIfEmpty, offsetMs: offsetMs))
         }
 
-        return LyricsDto(
-            lines: lines,
-            timeSynced: true,
-            romanization: hasRomanized
-                ? .romanized
-                : (lines.map(\.content).canBeRomanized ? .canBeRomanized : .original)
-        )
+        // Evaluate canBeRomanized eagerly here (on the background thread that is
+        // calling getLyrics), so the [String] NLP scan never runs on a
+        // concurrent Spotify rendering worker later.
+        let romanization: LyricsRomanizationStatus = hasRomanized
+            ? .romanized
+            : (lines.map(\.content).canBeRomanized ? .canBeRomanized : .original)
+
+        return LyricsDto(lines: lines, timeSynced: true, romanization: romanization)
     }
 
     // MARK: Line lyrics
-    //
-    // SpicyLyrics schema (Type == "Line"):
-    //   Content: [{ Type: "Vocal", Lead?: { Text, StartTime, EndTime },
-    //              Text?, StartTime?, EndTime? }]
 
     private func parseLineLyrics(_ root: SLObjPackValue) -> LyricsDto {
         guard let content = root["Content"]?.arrayValue else { return emptyDto() }
 
-        var lines        = [LyricsLineDto]()
+        var lines = [LyricsLineDto]()
         let hasRomanized = root["HasTransliterations"]?.boolValue ?? false
 
         for entry in content {
             guard entry["Type"]?.stringValue == "Vocal" else { continue }
-
-            // Text can live on Lead or directly on the entry.
-            let text = entry["Lead"]?["Text"]?.stringValue
-                    ?? entry["Text"]?.stringValue
-                    ?? ""
-
-            let startTime = entry["Lead"]?["StartTime"]?.doubleValue
-                         ?? entry["StartTime"]?.doubleValue
-
-            let offsetMs = startTime.map { Int($0 * 1000) }
-            lines.append(LyricsLineDto(content: text.lyricsNoteIfEmpty, offsetMs: offsetMs))
+            let text      = entry["Lead"]?["Text"]?.stringValue ?? entry["Text"]?.stringValue ?? ""
+            let startTime = entry["Lead"]?["StartTime"]?.doubleValue ?? entry["StartTime"]?.doubleValue
+            lines.append(LyricsLineDto(content: text.lyricsNoteIfEmpty, offsetMs: startTime.map { Int($0 * 1000) }))
         }
 
-        return LyricsDto(
-            lines: lines,
-            timeSynced: true,
-            romanization: hasRomanized
-                ? .romanized
-                : (lines.map(\.content).canBeRomanized ? .canBeRomanized : .original)
-        )
+        let romanization: LyricsRomanizationStatus = hasRomanized
+            ? .romanized
+            : (lines.map(\.content).canBeRomanized ? .canBeRomanized : .original)
+
+        return LyricsDto(lines: lines, timeSynced: true, romanization: romanization)
     }
 
     // MARK: Static lyrics
-    //
-    // SpicyLyrics schema (Type == "Static"):
-    //   Lines: [{ Text: string }]
 
     private func parseStaticLyrics(_ root: SLObjPackValue) -> LyricsDto {
         let rawLines = root["Lines"]?.arrayValue ?? []
@@ -250,11 +217,8 @@ class SpicyLyricsRepository: LyricsRepository {
             guard let text = entry["Text"]?.stringValue else { return nil }
             return LyricsLineDto(content: text.lyricsNoteIfEmpty, offsetMs: nil)
         }
-        return LyricsDto(
-            lines: lines,
-            timeSynced: false,
-            romanization: lines.map(\.content).canBeRomanized ? .canBeRomanized : .original
-        )
+        let romanization: LyricsRomanizationStatus = lines.map(\.content).canBeRomanized ? .canBeRomanized : .original
+        return LyricsDto(lines: lines, timeSynced: false, romanization: romanization)
     }
 
     private func emptyDto() -> LyricsDto {
