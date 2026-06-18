@@ -110,6 +110,8 @@ private func loadCustomLyricsForTrackId(_ trackId: String) throws -> Lyrics {
         repository = MusixmatchLyricsRepository.shared
     case .petit:
         repository = petitLyricsRepository
+    case .spicylyrics:
+        repository = SpicyLyricsRepository.shared
     case .notReplaced:
         throw LyricsError.invalidSource
     }
@@ -216,6 +218,8 @@ private func loadCustomLyricsForCurrentTrack() throws -> Lyrics {
         repository = MusixmatchLyricsRepository.shared
     case .petit:
         repository = petitLyricsRepository
+    case .spicylyrics:
+        repository = SpicyLyricsRepository.shared
     case .notReplaced:
         throw LyricsError.invalidSource
     }
