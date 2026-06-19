@@ -15,6 +15,7 @@ struct EeveeAppIconPickerView: View {
     @State private var icons: [AppIconEntry] = []
     @State private var selectedKey: String = primaryIconKey
     @State private var errorMessage: String?
+    @State private var prettifyNames: Bool = UserDefaults.iconNamePrettify
 
     var body: some View {
         List {
@@ -27,7 +28,26 @@ struct EeveeAppIconPickerView: View {
                         .buttonStyle(PlainButtonStyle())
                 }
             }
-            
+
+            Section {
+                Toggle(isOn: Binding(
+                    get: { prettifyNames },
+                    set: { newValue in
+                        prettifyNames = newValue
+                        UserDefaults.iconNamePrettify = newValue
+                        load()
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Prettify Icon Names")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Converts underscores, hyphens, and camelCase into spaces")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
             SpacerView()
         }
         .listStyle(InsetGroupedListStyle())
@@ -99,7 +119,7 @@ struct EeveeAppIconPickerView: View {
             let files = info?["CFBundleIconFiles"] as? [String] ?? [key]
             // Use the plist key as the display title but convert underscores,
             // hyphens, camelCase boundaries, and parentheses to readable spaces.
-            let displayTitle = Self.prettifyIconKey(key)
+            let displayTitle = Self.prettifyIconKey(key, prettify: prettifyNames)
             // Use the first CFBundleIconFiles entry as the alternateName passed to
             // setAlternateIconName. iOS resolves icons by the plist key — but on
             // sideloaded/jailbroken builds, keys with spaces or parentheses can fail.
@@ -144,37 +164,59 @@ struct EeveeAppIconPickerView: View {
         }
     }
 
-    /// Converts a raw plist key like "MyCustomIcon", "My_Custom_Icon",
-    /// "My-Custom-Icon", or "MyIcon(Dark)" into a readable display title.
+    /// Converts a raw plist key into a readable display title.
+    /// When `prettify` is false, returns the key unchanged.
+    /// When true:
     /// - Replaces underscores and hyphens with spaces.
-    /// - Inserts a space before each uppercase letter that follows a lowercase
-    ///   letter or digit (camelCase / PascalCase boundary detection).
-    /// - Inserts a space before `(` when not already preceded by one.
-    /// - Collapses any run of multiple spaces into a single space and trims.
-    static func prettifyIconKey(_ key: String) -> String {
+    /// - Inserts a space before `(` when not already preceded by a space.
+    /// - Inserts spaces at camelCase/PascalCase word boundaries.
+    /// - Inserts a space between a letter and a digit (and vice versa) when
+    ///   no space is already present — e.g. "EeveeV2" → "Eevee V2".
+    /// - Collapses multiple spaces and trims.
+    static func prettifyIconKey(_ key: String, prettify: Bool = true) -> String {
+        guard prettify else { return key }
+
         var result = key
         // Replace underscores and hyphens with spaces.
         result = result.replacingOccurrences(of: "_", with: " ")
         result = result.replacingOccurrences(of: "-", with: " ")
-        // Insert space before `(` when not already preceded by a space.
+        // Ensure a space before `(`.
         result = result.replacingOccurrences(of: "(", with: " (")
-        // Insert space at camelCase boundaries: lowercase/digit → uppercase.
+
+        // Walk character by character inserting spaces at boundaries.
         var spaced = ""
         let chars = Array(result)
         for i in chars.indices {
             let c = chars[i]
-            if i > 0, c.isUppercase {
+            if i > 0 {
                 let prev = chars[i - 1]
-                if prev.isLowercase || prev.isNumber {
+                let prevIsSpace = prev == " "
+
+                // camelCase / PascalCase: lowercase/digit → uppercase
+                if c.isUppercase && !prevIsSpace {
+                    if prev.isLowercase || prev.isNumber {
+                        spaced.append(" ")
+                    } else if c.isUppercase, prev.isUppercase,
+                              i + 1 < chars.count, chars[i + 1].isLowercase {
+                        // Acronym boundary: "NPVScroll" → "NPV Scroll"
+                        spaced.append(" ")
+                    }
+                }
+
+                // Letter → digit boundary: "Eevee2" → "Eevee 2"
+                if c.isNumber && prev.isLetter && !prevIsSpace {
                     spaced.append(" ")
-                } else if i + 1 < chars.count, chars[i + 1].isLowercase, prev.isUppercase {
-                    // Handle acronym boundaries: "NPVScrollView" → "NPV Scroll View"
+                }
+
+                // Digit → letter boundary: "2Eevee" → "2 Eevee"
+                if c.isLetter && prev.isNumber && !prevIsSpace {
                     spaced.append(" ")
                 }
             }
             spaced.append(c)
         }
-        // Collapse multiple spaces into one and trim.
+
+        // Collapse multiple spaces and trim.
         let components = spaced.components(separatedBy: " ").filter { !$0.isEmpty }
         return components.joined(separator: " ")
     }
