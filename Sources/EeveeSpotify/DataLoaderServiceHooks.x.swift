@@ -68,7 +68,17 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
         }
 
         do {
-            // Lyrics — async fetch with 5s budget, falls back to Spotify's own response on failure.
+            // Lyrics — async fetch with 18s budget, falls back to Spotify's own response on failure.
+            //
+            // iOS 27 / Spotify 9.1.60 fix: Spotify's URLSession delegate handler for
+            // didReceiveData now accesses @MainActor-isolated state. When we call orig.*
+            // from the SPTDataLoaderService delegate queue (a background serial queue),
+            // Swift's strict concurrency runtime trips _swift_task_checkIsolatedSwift and
+            // kills the process with EXC_BREAKPOINT / SIGTRAP.
+            //
+            // Fix: dispatch the two orig.URLSession calls onto the main queue.
+            // This matches the execution context Spotify's renderer expects and eliminates
+            // the @MainActor isolation violation entirely.
             if url.isLyrics {
                 let originalLyrics = try? Lyrics(serializedBytes: buffer)
                 let semaphore = DispatchSemaphore(value: 0)
@@ -80,8 +90,11 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
                 }
 
                 _ = semaphore.wait(timeout: .now() + .milliseconds(18000))
-                orig.URLSession(session, dataTask: task, didReceiveData: customLyricsData ?? buffer)
-                orig.URLSession(session, task: task, didCompleteWithError: nil)
+                let lyricsPayload = customLyricsData ?? buffer
+                DispatchQueue.main.async {
+                    orig.URLSession(session, dataTask: task, didReceiveData: lyricsPayload)
+                    orig.URLSession(session, task: task, didCompleteWithError: nil)
+                }
                 return
             }
 
@@ -133,8 +146,11 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
                 orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: handler)
                 return
             }
-            orig.URLSession(session, dataTask: task, didReceiveResponse: ok, completionHandler: handler)
-            orig.URLSession(session, dataTask: task, didReceiveData: data)
+            // iOS 27 fix: dispatch onto main queue (same reason as didCompleteWithError path above).
+            DispatchQueue.main.async {
+                orig.URLSession(session, dataTask: task, didReceiveResponse: ok, completionHandler: handler)
+                orig.URLSession(session, dataTask: task, didReceiveData: data)
+            }
         } catch {
             orig.URLSession(session, task: task, didCompleteWithError: error)
         }
