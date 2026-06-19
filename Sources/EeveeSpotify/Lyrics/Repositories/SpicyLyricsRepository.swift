@@ -121,12 +121,24 @@ class SpicyLyricsRepository: LyricsRepository {
     private func parseLyricsData(_ data: Data, trackId: String) throws -> LyricsDto {
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let queriesRaw = json["queries"] as? [[String: Any]],
-            let firstQuery = queriesRaw.first,
-            let result = firstQuery["result"] as? [String: Any]
+            let queriesRaw = json["queries"] as? [[String: Any]]
         else {
             let rawBody = String(data: data, encoding: .utf8) ?? "<non-utf8 \(data.count) bytes>"
             writeDebugLog("[SpicyLyrics] Malformed envelope for \(trackId): \(rawBody)")
+            throw LyricsError.decodingError
+        }
+
+        // The server may prepend extra entries ahead of the real query result
+        // (e.g. a "_notice" block with no "operationId"/"result"). The real
+        // Spicetify client never assumes index 0 — it looks results up by
+        // operationId via queries.get("0") — so we match that instead of
+        // blindly taking queriesRaw.first.
+        guard
+            let matchedQuery = queriesRaw.first(where: { $0["operationId"] as? String == "0" }),
+            let result = matchedQuery["result"] as? [String: Any]
+        else {
+            let rawBody = String(data: data, encoding: .utf8) ?? "<non-utf8 \(data.count) bytes>"
+            writeDebugLog("[SpicyLyrics] No matching operationId 0 for \(trackId): \(rawBody)")
             throw LyricsError.decodingError
         }
 
