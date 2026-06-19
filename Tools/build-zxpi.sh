@@ -30,11 +30,11 @@ make FINALPACKAGE=1
 DYLIB_OUT="$MOD_DIR/.theos/obj/zxPluginsInject.dylib"
 [ -f "$DYLIB_OUT" ] || { echo "zxPluginsInject.dylib not produced" >&2; exit 1; }
 
-mkdir -p "$REPO_DIR/built_dylibs"
-cp "$DYLIB_OUT" "$REPO_DIR/built_dylibs/zxPluginsInject.dylib"
+mkdir -p "$REPO_DIR/packages"
+cp "$DYLIB_OUT" "$REPO_DIR/packages/zxPluginsInject.dylib"
 
 install_name_tool -id "@rpath/zxPluginsInject.dylib" \
-    "$REPO_DIR/built_dylibs/zxPluginsInject.dylib" 2>/dev/null || true
+    "$REPO_DIR/packages/zxPluginsInject.dylib" 2>/dev/null || true
 
-echo "Saved: $REPO_DIR/built_dylibs/zxPluginsInject.dylib"
-ls -lh "$REPO_DIR/built_dylibs/zxPluginsInject.dylib"
+echo "Saved: $REPO_DIR/packages/zxPluginsInject.dylib"
+ls -lh "$REPO_DIR/packages/zxPluginsInject.dylib"
