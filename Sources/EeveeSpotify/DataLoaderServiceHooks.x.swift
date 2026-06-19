@@ -91,7 +91,7 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
 
                 _ = semaphore.wait(timeout: .now() + .milliseconds(18000))
                 let lyricsPayload = customLyricsData ?? buffer
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [self] in
                     orig.URLSession(session, dataTask: task, didReceiveData: lyricsPayload)
                     orig.URLSession(session, task: task, didCompleteWithError: nil)
                 }
@@ -147,7 +147,7 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
                 return
             }
             // iOS 27 fix: dispatch onto main queue (same reason as didCompleteWithError path above).
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
                 orig.URLSession(session, dataTask: task, didReceiveResponse: ok, completionHandler: handler)
                 orig.URLSession(session, dataTask: task, didReceiveData: data)
             }
