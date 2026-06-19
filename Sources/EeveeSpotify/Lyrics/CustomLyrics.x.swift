@@ -291,6 +291,16 @@ private func loadCustomLyricsForCurrentTrack() throws -> Lyrics {
     return lyrics
 }
 
+/// Extracts the Spotify track ID from a `/color-lyrics/v2/track/{trackId}` URL path.
+/// Returns nil if the path doesn't match the expected format.
+func extractTrackId(from path: String) -> String? {
+    guard let range = path.range(of: #"/track/([a-zA-Z0-9]+)"#, options: .regularExpression) else {
+        return nil
+    }
+    let trackId = String(path[range].split(separator: "/").last ?? "")
+    return trackId.isEmpty ? nil : trackId
+}
+
 // MARK: - Lyrics cache + prefetch
 // Caches the most recently fetched lyrics data per track ID so that:
 //   1. The full lyrics view (second request) returns instantly from cache.
@@ -323,14 +333,34 @@ func prefetchLyricsIfNeeded(trackId: String) {
                 prefetchingTrackId = nil
             }
         }
-        // Build the fake URL path that getLyricsDataForCurrentTrack expects.
-        let fakePath = "/color-lyrics/v2/track/\(trackId)"
-        if let data = try? getLyricsDataForCurrentTrack(fakePath, originalLyrics: nil) {
-            writeDebugLog("[Lyrics] prefetch complete for \(trackId)")
-            // storeLyricsCache is already called inside getLyricsDataForCurrentTrack.
-            _ = data
-        } else {
-            writeDebugLog("[Lyrics] prefetch failed for \(trackId)")
+        do {
+            var lyrics = try loadCustomLyricsForTrackId(trackId)
+
+            // Apply color so the cached payload is fully valid.
+            // Mirror the same logic used in getLyricsDataForCurrentTrack.
+            let lyricsColorsSettings = UserDefaults.lyricsColors
+            if !lyricsColorsSettings.displayOriginalColors {
+                let color: Color
+                if lyricsColorsSettings.useStaticColor {
+                    color = Color(hex: lyricsColorsSettings.staticColor)
+                } else if let uiColor = backgroundViewModel?.color() {
+                    color = Color(uiColor).normalized(lyricsColorsSettings.normalizationFactor)
+                } else {
+                    color = Color.gray
+                }
+                lyrics.colors = LyricsColors.with {
+                    $0.backgroundColor = color.uInt32
+                    $0.lineColor = Color.black.uInt32
+                    $0.activeLineColor = Color.white.uInt32
+                }
+            }
+
+            if let data = try? lyrics.serializedData() {
+                storeLyricsCache(data: data, trackId: trackId)
+                writeDebugLog("[Lyrics] prefetch complete for \(trackId)")
+            }
+        } catch {
+            writeDebugLog("[Lyrics] prefetch failed for \(trackId): \(error)")
         }
     }
 }
@@ -372,15 +402,7 @@ func getLyricsDataForCurrentTrack(_ originalPath: String, originalLyrics: Lyrics
     
     // track id from URL path; player objects are nil on 9.1.6
     // path: /color-lyrics/v2/track/{trackId}
-    let trackIdentifier: String
-    if let range = originalPath.range(of: #"/track/([a-zA-Z0-9]+)"#, options: .regularExpression) {
-        let match = originalPath[range]
-        trackIdentifier = String(match.split(separator: "/").last ?? "")
-    } else {
-        throw LyricsError.noCurrentTrack
-    }
-
-    if trackIdentifier.isEmpty {
+    guard let trackIdentifier = extractTrackId(from: originalPath), !trackIdentifier.isEmpty else {
         throw LyricsError.noCurrentTrack
     }
 
