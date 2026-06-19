@@ -33,7 +33,12 @@ class SpicyLyricsRepository: LyricsRepository {
 
     private static let apiUrl        = "https://api.spicylyrics.org"
     private static let authHeaderKey = "SpicyLyrics-WebAuth"
-    private static let clientVersion = "EeveeSpotify/1.0"
+    // Must be a real SpicyLyrics semver string (matches `(\d+)\.(\d+)\.(\d+)` on
+    // the client's own ParseVersion, and is almost certainly checked server-side
+    // too). The server returns a tiny generic error body for anything that
+    // doesn't parse as a known client version — e.g. our old "EeveeSpotify/1.0"
+    // — which is what was silently triggering Genius fallback.
+    private static let clientVersion = "6.1.1"
 
     // MARK: - Token wait
     //
@@ -120,7 +125,8 @@ class SpicyLyricsRepository: LyricsRepository {
             let firstQuery = queriesRaw.first,
             let result = firstQuery["result"] as? [String: Any]
         else {
-            writeDebugLog("[SpicyLyrics] Malformed envelope for \(trackId)")
+            let rawBody = String(data: data, encoding: .utf8) ?? "<non-utf8 \(data.count) bytes>"
+            writeDebugLog("[SpicyLyrics] Malformed envelope for \(trackId): \(rawBody)")
             throw LyricsError.decodingError
         }
 
