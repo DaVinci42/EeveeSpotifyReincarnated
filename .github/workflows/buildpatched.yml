@@ -78,8 +78,7 @@ jobs:
 
       # ─── IPA build (only when ipa_url is provided) ───────────────────
       
-      - name: Mask vanilla IPA url
-        run: echo "::add-mask::${{ inputs.ipa_url }}"
+      - uses: levibostian/action-hide-sensitive-inputs@v1
 
       - name: Validate vanilla IPA
         if: ${{ inputs.ipa_url != '' }}

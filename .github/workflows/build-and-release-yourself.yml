@@ -34,9 +34,6 @@ jobs:
 
       - uses: levibostian/action-hide-sensitive-inputs@v1
 
-      - name: Mask vanilla IPA url
-        run: echo "::add-mask::${{ inputs.ipa_url }}"
-
       - name: Download IPA
         run: |
           wget "${{ inputs.ipa_url }}" --no-verbose -O ${{ github.workspace }}/spotify.ipa
