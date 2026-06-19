@@ -27,7 +27,6 @@ fi
 
 make FINALPACKAGE=1
 
-# Trova il dylib generato
 if [ -f "$MOD_DIR/.theos/obj/zxPluginsInject.dylib" ]; then
     DYLIB_OUT="$MOD_DIR/.theos/obj/zxPluginsInject.dylib"
 elif [ -f "$MOD_DIR/.theos/obj/debug/zxPluginsInject.dylib" ]; then
@@ -37,15 +36,12 @@ else
     exit 1
 fi
 
-# Creiamo ENTRAMBE le cartelle per non avere dubbi
 mkdir -p "$REPO_DIR/extra_dylibs"
 mkdir -p "$REPO_DIR/packages"
 
-# Copiamo il file in entrambi i percorsi richiesti
 cp "$DYLIB_OUT" "$REPO_DIR/extra_dylibs/zxPluginsInject.dylib"
 cp "$DYLIB_OUT" "$REPO_DIR/packages/zxPluginsInject.dylib"
 
-# Applichiamo la patch ad entrambi i file
 install_name_tool -id "@rpath/zxPluginsInject.dylib" "$REPO_DIR/extra_dylibs/zxPluginsInject.dylib" 2>/dev/null || true
 install_name_tool -id "@rpath/zxPluginsInject.dylib" "$REPO_DIR/packages/zxPluginsInject.dylib" 2>/dev/null || true
 
