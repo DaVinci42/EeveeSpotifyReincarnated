@@ -2,24 +2,19 @@ import Foundation
 
 // MARK: - SpicyLyricsRepository
 //
-// Fetches lyrics from api.spicylyrics.org (the SpicyLyrics / nontitled backend)
-// and converts the response into EeveeSpotify's LyricsDto.
+// Fetches lyrics from api.spicylyrics.org and converts the response into LyricsDto.
 //
-// ── iOS 27 / Spotify 9.1.60 crash fix ──────────────────────────────────────
-// The original implementation used URLSession.shared. On iOS 27 beta, Spotify
-// 9.1.60 has adopted strict Swift Concurrency (@MainActor enforcement) in its
-// lyrics rendering path. When lyrics arrive and Spotify starts rendering via
-// DispatchQueue.concurrentPerform, any work that touches @MainActor-isolated
-// state from a worker thread trips _swift_task_checkIsolatedSwift and causes a
-// fatal SIGTRAP (EXC_BREAKPOINT / brk 1).
+// ── Token availability ───────────────────────────────────────────────────────
+// spotifyAccessToken is captured lazily from Spotify's outgoing requests.
+// On first track load it may be nil. The Spicetify extension uses
+// Platform.GetSpotifyAccessToken() which awaits the token asynchronously.
+// We replicate that by polling spotifyAccessToken for up to 5 seconds before
+// giving up — this prevents an immediate 401 from the API triggering Genius fallback.
 //
-// The fix mirrors LrclibLyricsRepository exactly:
-//   • Use a dedicated ephemeral URLSession instead of URLSession.shared.
-//   • Set a generous timeout (15s) so the call doesn't ghost on slow networks.
-//   • Ensure all response processing (SLObjPack decode, LyricsDto construction)
-//     completes fully before returning, so Spotify's rendering path receives
-//     a plain value type with no deferred/lazy work that could later be
-//     evaluated on the wrong executor.
+// ── iOS 27 crash ─────────────────────────────────────────────────────────────
+// The EXC_BREAKPOINT / _swift_task_checkIsolatedSwift crash is fixed in
+// DataLoaderServiceHooks.x.swift by dispatching orig.URLSession callbacks
+// onto the main queue. No changes needed here for that.
 
 class SpicyLyricsRepository: LyricsRepository {
 
@@ -39,6 +34,21 @@ class SpicyLyricsRepository: LyricsRepository {
     private static let apiUrl        = "https://api.spicylyrics.org"
     private static let authHeaderKey = "SpicyLyrics-WebAuth"
     private static let clientVersion = "EeveeSpotify/1.0"
+
+    // MARK: - Token wait
+    //
+    // Poll for spotifyAccessToken up to `timeout` seconds.
+    // Returns the token or nil if not available in time.
+    private func waitForToken(timeout: TimeInterval = 5.0) -> String? {
+        if let token = spotifyAccessToken { return token }
+
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+            if let token = spotifyAccessToken { return token }
+        }
+        return nil
+    }
 
     // MARK: - Network
 
@@ -62,18 +72,21 @@ class SpicyLyricsRepository: LyricsRepository {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json",                        forHTTPHeaderField: "Content-Type")
-        request.setValue(SpicyLyricsRepository.clientVersion,      forHTTPHeaderField: "SpicyLyrics-Version")
+        request.setValue("application/json",                   forHTTPHeaderField: "Content-Type")
+        request.setValue(SpicyLyricsRepository.clientVersion, forHTTPHeaderField: "SpicyLyrics-Version")
 
-        if let token = spotifyAccessToken {
+        // Wait for the Spotify Bearer token — mirrors Platform.GetSpotifyAccessToken()
+        // in the Spicetify extension. Without a valid token the API returns non-200
+        // immediately, which falsely triggers Genius fallback.
+        if let token = waitForToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
+            writeDebugLog("[SpicyLyrics] Using captured token for \(trackId)")
+        } else {
+            writeDebugLog("[SpicyLyrics] No token available for \(trackId) — proceeding unauthenticated")
         }
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        // Synchronous wait — identical pattern to LrclibLyricsRepository and
-        // MusixmatchLyricsRepository; getLyrics() is always called off the main
-        // thread by EeveeSpotify's hook, so blocking here is safe.
         let semaphore = DispatchSemaphore(value: 0)
         var responseData: Data?
         var responseError: Error?
@@ -112,11 +125,21 @@ class SpicyLyricsRepository: LyricsRepository {
         }
 
         let httpStatus = result["httpStatus"] as? Int ?? 0
+        writeDebugLog("[SpicyLyrics] API status \(httpStatus) for \(trackId)")
+
         switch httpStatus {
-        case 404: throw LyricsError.noSuchSong
-        case 200: break
+        case 404:
+            throw LyricsError.noSuchSong
+        case 200:
+            break
+        case 401, 403:
+            // Auth failure — token was stale or rejected. Clear it so the next
+            // attempt re-waits for a fresh one.
+            writeDebugLog("[SpicyLyrics] Auth error \(httpStatus) for \(trackId) — clearing cached token")
+            spotifyAccessToken = nil
+            throw LyricsError.noSuchSong
         default:
-            writeDebugLog("[SpicyLyrics] Status \(httpStatus) for \(trackId)")
+            writeDebugLog("[SpicyLyrics] Unexpected status \(httpStatus) for \(trackId)")
             throw LyricsError.noSuchSong
         }
 
@@ -135,7 +158,7 @@ class SpicyLyricsRepository: LyricsRepository {
             throw LyricsError.decodingError
         }
 
-        writeDebugLog("[SpicyLyrics] Type=\(type) for \(trackId)")
+        writeDebugLog("[SpicyLyrics] Lyrics type=\(type) for \(trackId)")
 
         switch type {
         case "Syllable": return parseSyllableLyrics(packed)
@@ -177,9 +200,6 @@ class SpicyLyricsRepository: LyricsRepository {
             lines.append(LyricsLineDto(content: lineText.lyricsNoteIfEmpty, offsetMs: offsetMs))
         }
 
-        // Evaluate canBeRomanized eagerly here (on the background thread that is
-        // calling getLyrics), so the [String] NLP scan never runs on a
-        // concurrent Spotify rendering worker later.
         let romanization: LyricsRomanizationStatus = hasRomanized
             ? .romanized
             : (lines.map(\.content).canBeRomanized ? .canBeRomanized : .original)
@@ -192,7 +212,7 @@ class SpicyLyricsRepository: LyricsRepository {
     private func parseLineLyrics(_ root: SLObjPackValue) -> LyricsDto {
         guard let content = root["Content"]?.arrayValue else { return emptyDto() }
 
-        var lines = [LyricsLineDto]()
+        var lines        = [LyricsLineDto]()
         let hasRomanized = root["HasTransliterations"]?.boolValue ?? false
 
         for entry in content {
@@ -217,7 +237,8 @@ class SpicyLyricsRepository: LyricsRepository {
             guard let text = entry["Text"]?.stringValue else { return nil }
             return LyricsLineDto(content: text.lyricsNoteIfEmpty, offsetMs: nil)
         }
-        let romanization: LyricsRomanizationStatus = lines.map(\.content).canBeRomanized ? .canBeRomanized : .original
+        let romanization: LyricsRomanizationStatus = lines.map(\.content).canBeRomanized
+            ? .canBeRomanized : .original
         return LyricsDto(lines: lines, timeSynced: false, romanization: romanization)
     }
 
