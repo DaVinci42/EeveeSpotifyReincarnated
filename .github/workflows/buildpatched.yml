@@ -77,6 +77,9 @@ jobs:
           if-no-files-found: error
 
       # ─── IPA build (only when ipa_url is provided) ───────────────────
+      
+      - name: Mask vanilla IPA url
+        run: echo "::add-mask::${{ inputs.ipa_url }}"
 
       - name: Validate vanilla IPA
         if: ${{ inputs.ipa_url != '' }}
