@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build zxPluginsInject.dylib from source in modules/zxPluginsInject.
 #
-# Used by GitHub Actions and local builds. Output: packages/zxPluginsInject.dylib
+# Used by GitHub Actions and local builds. Output: extra_dylibs/zxPluginsInject.dylib
 #
 # Requires THEOS (CI installs it in a prior step). Falls back to ~/theos locally.
 
@@ -27,14 +27,22 @@ fi
 
 make FINALPACKAGE=1
 
-DYLIB_OUT="$MOD_DIR/.theos/obj/zxPluginsInject.dylib"
-[ -f "$DYLIB_OUT" ] || { echo "zxPluginsInject.dylib not produced" >&2; exit 1; }
+# Cerca il dylib sia nella cartella standard che in quella debug/obj per sicurezza
+if [ -f "$MOD_DIR/.theos/obj/zxPluginsInject.dylib" ]; then
+    DYLIB_OUT="$MOD_DIR/.theos/obj/zxPluginsInject.dylib"
+elif [ -f "$MOD_DIR/.theos/obj/debug/zxPluginsInject.dylib" ]; then
+    DYLIB_OUT="$MOD_DIR/.theos/obj/debug/zxPluginsInject.dylib"
+else
+    echo "zxPluginsInject.dylib not produced" >&2
+    exit 1
+fi
 
-mkdir -p "$REPO_DIR/built_dylibs"
-cp "$DYLIB_OUT" "$REPO_DIR/packages/zxPluginsInject.dylib"
+# Crea la cartella extra_dylibs richiesta dal workflow principale
+mkdir -p "$REPO_DIR/extra_dylibs"
+cp "$DYLIB_OUT" "$REPO_DIR/extra_dylibs/zxPluginsInject.dylib"
 
 install_name_tool -id "@rpath/zxPluginsInject.dylib" \
-    "$REPO_DIR/packages/zxPluginsInject.dylib" 2>/dev/null || true
+    "$REPO_DIR/extra_dylibs/zxPluginsInject.dylib" 2>/dev/null || true
 
-echo "Saved: $REPO_DIR/packages/zxPluginsInject.dylib"
-ls -lh "$REPO_DIR/packages/zxPluginsInject.dylib"
+echo "Saved: $REPO_DIR/extra_dylibs/zxPluginsInject.dylib"
+ls -lh "$REPO_DIR/extra_dylibs/zxPluginsInject.dylib"
