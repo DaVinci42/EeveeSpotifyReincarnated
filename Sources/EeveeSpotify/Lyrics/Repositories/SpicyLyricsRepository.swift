@@ -83,16 +83,26 @@ class SpicyLyricsRepository: LyricsRepository {
 
         // Match the real desktop Spicetify request's identity headers — captured
         // via mitmproxy from an actual desktop session that returned Syllable
-        // (word-synced) data. Without these, the server has no way to tell this
-        // request apart from an arbitrary HTTP client, and very plausibly
-        // degrades to the safe Static-only response we've been seeing regardless
-        // of token validity or client version.
+        // (word-synced) data. Origin/Referer/User-Agent alone got us from Static
+        // to Line — these additional Client Hints / Sec-Fetch headers are the
+        // remaining gap to close, in case the server uses sec-ch-ua-mobile or
+        // sec-ch-ua-platform to decide whether to serve full Syllable data.
         request.setValue("https://xpui.app.spotify.com",  forHTTPHeaderField: "Origin")
         request.setValue("https://xpui.app.spotify.com/", forHTTPHeaderField: "Referer")
         request.setValue(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Spotify/1.2.92.148 Safari/537.36",
             forHTTPHeaderField: "User-Agent"
         )
+        request.setValue("\"Windows\"",                      forHTTPHeaderField: "sec-ch-ua-platform")
+        request.setValue("\"Not-A.Brand\";v=\"24\", \"Chromium\";v=\"146\"", forHTTPHeaderField: "sec-ch-ua")
+        request.setValue("?0",                                forHTTPHeaderField: "sec-ch-ua-mobile")
+        request.setValue("*/*",                               forHTTPHeaderField: "Accept")
+        request.setValue("cross-site",                        forHTTPHeaderField: "sec-fetch-site")
+        request.setValue("cors",                              forHTTPHeaderField: "sec-fetch-mode")
+        request.setValue("empty",                             forHTTPHeaderField: "sec-fetch-dest")
+        request.setValue("gzip, deflate, br, zstd",           forHTTPHeaderField: "Accept-Encoding")
+        request.setValue("en-Latn-US,en-US;q=0.9,en-Latn;q=0.8,en;q=0.7", forHTTPHeaderField: "Accept-Language")
+        request.setValue("u=1, i",                            forHTTPHeaderField: "priority")
 
         // Wait for the Spotify Bearer token — mirrors Platform.GetSpotifyAccessToken()
         // in the Spicetify extension. Without a valid token the API returns non-200
