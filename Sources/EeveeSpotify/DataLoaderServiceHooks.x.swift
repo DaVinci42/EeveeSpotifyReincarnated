@@ -153,31 +153,42 @@ class SPTDataLoaderServiceHook: ClassHook<NSObject>, SpotifySessionDelegate {
 
         // Lyrics 4xx/5xx — replace with our custom fetch result so the
         // consumer doesn't show "no lyrics available".
+        //
+        // IMPORTANT: getLyricsDataForCurrentTrack is a blocking network call.
+        // Calling it synchronously here deadlocks because this delegate queue is
+        // also needed to deliver subsequent delegate callbacks (didReceiveData,
+        // didCompleteWithError). The fix is to fetch on a background queue while
+        // holding the URLSession completion handler open — URLSession won't
+        // proceed until we call handler(.allow/.cancel), so we have time to fetch
+        // and then deliver everything ourselves.
         guard let url = task.currentRequest?.url, url.isLyrics, response.statusCode != 200 else {
             orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: handler)
             return
         }
 
-        do {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
             // Fast path: serve from cache without a new fetch.
-            let data: Data
+            let data: Data?
             if let trackId = extractTrackId(from: url.path),
                let cached = cachedLyricsData(for: trackId) {
                 data = cached
             } else {
-                data = try getLyricsDataForCurrentTrack(url.path)
+                data = try? getLyricsDataForCurrentTrack(url.path)
             }
-            guard let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "2.0", headerFields: [:]) else {
-                orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: handler)
+
+            guard let lyricsData = data,
+                  let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "2.0", headerFields: [:]) else {
+                // Fetch failed — let Spotify handle the original non-200 response.
+                handler(.allow)
+                orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: { _ in })
                 return
             }
-            // iOS 27 fix: dispatch onto main queue (same reason as didCompleteWithError path above).
+
             DispatchQueue.main.async { [self] in
                 orig.URLSession(session, dataTask: task, didReceiveResponse: ok, completionHandler: handler)
-                orig.URLSession(session, dataTask: task, didReceiveData: data)
+                orig.URLSession(session, dataTask: task, didReceiveData: lyricsData)
+                orig.URLSession(session, task: task, didCompleteWithError: nil)
             }
-        } catch {
-            orig.URLSession(session, task: task, didCompleteWithError: error)
         }
     }
 
