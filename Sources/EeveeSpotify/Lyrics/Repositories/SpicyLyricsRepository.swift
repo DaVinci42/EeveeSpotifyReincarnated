@@ -33,11 +33,12 @@ class SpicyLyricsRepository: LyricsRepository {
 
     private static let apiUrl        = "https://api.spicylyrics.org"
     private static let authHeaderKey = "SpicyLyrics-WebAuth"
-    // Must be a real SpicyLyrics semver string (matches `(\d+)\.(\d+)\.(\d+)` on
-    // the client's own ParseVersion, and is almost certainly checked server-side
-    // too). The server returns a tiny generic error body for anything that
-    // doesn't parse as a known client version — e.g. our old "EeveeSpotify/1.0"
-    // — which is what was silently triggering Genius fallback.
+    // Confirmed via github.com/Spikerko/spicy-lyrics/releases/latest (6.1.1,
+    // released 14 Jun) that this is genuinely the current shipped version —
+    // the version-mismatch theory was a dead end, not the cause of the
+    // Static-vs-Syllable discrepancy. Leaving this accurate for future-proofing
+    // (the server may still reject very stale versions eventually) but it is
+    // NOT the explanation for the current bug.
     private static let clientVersion = "6.1.1"
 
     // MARK: - Token wait
@@ -80,18 +81,28 @@ class SpicyLyricsRepository: LyricsRepository {
         request.setValue("application/json",                   forHTTPHeaderField: "Content-Type")
         request.setValue(SpicyLyricsRepository.clientVersion, forHTTPHeaderField: "SpicyLyrics-Version")
 
-        // TEMP TEST — force a fake token to see if server behavior changes.
-        // Revert this after testing!
-        request.setValue("Bearer test123", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
-        writeDebugLog("[SpicyLyrics] TEMP TEST: using fake token for \(trackId)")
-        /*
+        // Match the real desktop Spicetify request's identity headers — captured
+        // via mitmproxy from an actual desktop session that returned Syllable
+        // (word-synced) data. Without these, the server has no way to tell this
+        // request apart from an arbitrary HTTP client, and very plausibly
+        // degrades to the safe Static-only response we've been seeing regardless
+        // of token validity or client version.
+        request.setValue("https://xpui.app.spotify.com",  forHTTPHeaderField: "Origin")
+        request.setValue("https://xpui.app.spotify.com/", forHTTPHeaderField: "Referer")
+        request.setValue(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.179 Spotify/1.2.92.148 Safari/537.36",
+            forHTTPHeaderField: "User-Agent"
+        )
+
+        // Wait for the Spotify Bearer token — mirrors Platform.GetSpotifyAccessToken()
+        // in the Spicetify extension. Without a valid token the API returns non-200
+        // immediately, which falsely triggers Genius fallback.
         if let token = waitForToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
             writeDebugLog("[SpicyLyrics] Using captured token for \(trackId)")
         } else {
             writeDebugLog("[SpicyLyrics] No token available for \(trackId) — proceeding unauthenticated")
         }
-        */
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
