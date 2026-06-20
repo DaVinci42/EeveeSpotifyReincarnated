@@ -129,22 +129,28 @@ class HttpClientURLSessionHook: ClassHook<NSObject>, SpotifySessionDelegate {
             return
         }
 
-        do {
-            let data: Data
+        // Fetch on a background queue while holding the completion handler open.
+        // Calling getLyricsDataForCurrentTrack synchronously here would block the
+        // delegate queue and prevent subsequent delegate callbacks from firing.
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let data: Data?
             if let trackId = extractTrackId(from: url.path),
                let cached = cachedLyricsData(for: trackId) {
                 data = cached
             } else {
-                data = try getLyricsDataForCurrentTrack(url.path)
+                data = try? getLyricsDataForCurrentTrack(url.path)
             }
-            guard let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "2.0", headerFields: [:]) else {
-                orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: handler)
+
+            guard let lyricsData = data,
+                  let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "2.0", headerFields: [:]) else {
+                handler(.allow)
+                orig.URLSession(session, dataTask: task, didReceiveResponse: response, completionHandler: { _ in })
                 return
             }
+
             orig.URLSession(session, dataTask: task, didReceiveResponse: ok, completionHandler: handler)
-            orig.URLSession(session, dataTask: task, didReceiveData: data)
-        } catch {
-            orig.URLSession(session, task: task, didCompleteWithError: error)
+            orig.URLSession(session, dataTask: task, didReceiveData: lyricsData)
+            orig.URLSession(session, task: task, didCompleteWithError: nil)
         }
     }
 
