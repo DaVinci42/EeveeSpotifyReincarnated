@@ -80,15 +80,18 @@ class SpicyLyricsRepository: LyricsRepository {
         request.setValue("application/json",                   forHTTPHeaderField: "Content-Type")
         request.setValue(SpicyLyricsRepository.clientVersion, forHTTPHeaderField: "SpicyLyrics-Version")
 
-        // Wait for the Spotify Bearer token — mirrors Platform.GetSpotifyAccessToken()
-        // in the Spicetify extension. Without a valid token the API returns non-200
-        // immediately, which falsely triggers Genius fallback.
+        // TEMP TEST — force a fake token to see if server behavior changes.
+        // Revert this after testing!
+        request.setValue("Bearer test123", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
+        writeDebugLog("[SpicyLyrics] TEMP TEST: using fake token for \(trackId)")
+        /*
         if let token = waitForToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: SpicyLyricsRepository.authHeaderKey)
             writeDebugLog("[SpicyLyrics] Using captured token for \(trackId)")
         } else {
             writeDebugLog("[SpicyLyrics] No token available for \(trackId) — proceeding unauthenticated")
         }
+        */
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
