@@ -226,7 +226,21 @@ class SpicyLyricsRepository: LyricsRepository {
 
             let lineText: String
             if let syllables = lead["Syllables"]?.arrayValue, !syllables.isEmpty {
-                lineText = syllables.compactMap { $0["Text"]?.stringValue }.joined()
+                // Real client rule (Syllable.ts): a syllable with IsPartOfWord=true
+                // attaches directly to the previous syllable (continues the same
+                // word, e.g. "re" + "call" -> "recall"); otherwise it starts a new
+                // word and needs a preceding space. Plain .joined() (no separator)
+                // ignored this entirely, producing "Doyourecall,notlongago?".
+                var text = ""
+                for syllable in syllables {
+                    guard let syllableText = syllable["Text"]?.stringValue else { continue }
+                    let isPartOfWord = syllable["IsPartOfWord"]?.boolValue ?? false
+                    if !text.isEmpty && !isPartOfWord {
+                        text += " "
+                    }
+                    text += syllableText
+                }
+                lineText = text
                 if syllables.contains(where: { ($0["TransliteratedText"]?.stringValue ?? "").isEmpty == false }) {
                     hasRomanized = true
                 }
