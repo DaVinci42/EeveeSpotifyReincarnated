@@ -20,6 +20,12 @@ EeveeSpotify_SWIFTFLAGS = -ISources/EeveeSpotifyC/include -Osize
 EeveeSpotify_EXTRA_FRAMEWORKS = EeveeSwiftProtobuf
 EeveeSpotify_CFLAGS = -fobjc-arc -ISources/EeveeSpotifyC/include -Os
 
+# RootHide's compatibility implementation of libroot resolves jailbreak paths
+# through libroothide at runtime. Rootless builds continue to use libroot.
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+EeveeSpotify_LDFLAGS += -lroothide
+endif
+
 # Sideload compatibility (keychain redirect, group containers, CloudKit) is
 # handled out-of-process by modules/zxPluginsInject — LC-injected via ipapatch
 # in build-ipa-local.sh and the GitHub workflow. No flags needed here.
