@@ -67,11 +67,12 @@ mkdir -p "$OUT/Modules/${MODULE}.swiftmodule"
 
 lipo -create "$SRC/build-arm64/${MODULE}" "$SRC/build-arm64e/${MODULE}" -output "$OUT/${MODULE}"
 
-# RootHide enforces signatures on injected dependencies too. Theos signs the
-# tweak binary, but this framework is assembled manually and must be signed
-# before it is copied into the package.
-command -v ldid >/dev/null 2>&1 || { echo "ldid not found"; exit 1; }
-ldid -S "$OUT/${MODULE}"
+# RootHide enforces signatures on injected dependencies too. Keep the classic
+# rootless framework build unchanged; only its RootHide counterpart needs this.
+if [ "$PACKAGE_SCHEME" = "roothide" ]; then
+    command -v ldid >/dev/null 2>&1 || { echo "ldid not found"; exit 1; }
+    ldid -S "$OUT/${MODULE}"
+fi
 
 for ARCH in arm64 arm64e; do
     OBJDIR="$SRC/build-$ARCH"

@@ -235,8 +235,7 @@ struct EeveeSpotify: Tweak {
 
         activateEeveeCrossfadeForce()
 
-        // Each experimental ad surface is independently capability-gated, so a
-        // service renamed by Spotify cannot prevent the other hooks from loading.
+        // TESTING: extended ad blocker (NPV/lyrics ad, home brand-ads, in-stream).
         activateEeveeAdBlockerExtended()
 
         // Block premium upsell / "Like listening without limits?" popups.
