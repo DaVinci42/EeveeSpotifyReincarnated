@@ -20,6 +20,12 @@ PACKAGE_SCHEME="${THEOS_PACKAGE_SCHEME:-rootless}"
 OUT="$THEOS/lib/iphone/${PACKAGE_SCHEME}/${MODULE}.framework"
 DEPLOY_TARGET="${DEPLOY_TARGET:-14.0}"
 
+if [ "$PACKAGE_SCHEME" = "roothide" ]; then
+    INSTALL_NAME="@loader_path/.jbroot/Library/Frameworks/${MODULE}.framework/${MODULE}"
+else
+    INSTALL_NAME="@rpath/${MODULE}.framework/${MODULE}"
+fi
+
 [ -n "${THEOS:-}" ] || { echo "THEOS env not set"; exit 1; }
 
 color() { printf '\033[1;32m==> %s\033[0m\n' "$*"; }
@@ -45,7 +51,7 @@ build_arch() {
         -module-name "$MODULE" \
         -enable-library-evolution -emit-module-interface \
         -Xfrontend -enable-testing -parse-as-library \
-        -Xlinker -install_name -Xlinker "@rpath/${MODULE}.framework/${MODULE}" \
+        -Xlinker -install_name -Xlinker "$INSTALL_NAME" \
         -Xlinker -application_extension \
         -o "$OBJDIR/${MODULE}" \
         -emit-module-path "$OBJDIR/${MODULE}.swiftmodule" \
@@ -60,6 +66,12 @@ rm -rf "$OUT"
 mkdir -p "$OUT/Modules/${MODULE}.swiftmodule"
 
 lipo -create "$SRC/build-arm64/${MODULE}" "$SRC/build-arm64e/${MODULE}" -output "$OUT/${MODULE}"
+
+# RootHide enforces signatures on injected dependencies too. Theos signs the
+# tweak binary, but this framework is assembled manually and must be signed
+# before it is copied into the package.
+command -v ldid >/dev/null 2>&1 || { echo "ldid not found"; exit 1; }
+ldid -S "$OUT/${MODULE}"
 
 for ARCH in arm64 arm64e; do
     OBJDIR="$SRC/build-$ARCH"
