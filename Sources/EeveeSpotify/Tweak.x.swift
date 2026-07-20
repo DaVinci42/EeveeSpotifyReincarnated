@@ -235,15 +235,9 @@ struct EeveeSpotify: Tweak {
 
         activateEeveeCrossfadeForce()
 
-        // The extended ad blocker is experimental and its service hooks do not
-        // all exist with the same Objective-C signatures in Spotify 9.1.x.
-        // Orion treats one incompatible descriptor as fatal during startup, so
-        // keep the stable ad-blocking paths enabled and skip only this group.
-        if EeveeSpotify.hookTarget == .v91 {
-            NSLog("[EeveeSpotify][AdBlock] skipping extended group on Spotify 9.1.x")
-        } else {
-            activateEeveeAdBlockerExtended()
-        }
+        // Each experimental ad surface is independently capability-gated, so a
+        // service renamed by Spotify cannot prevent the other hooks from loading.
+        activateEeveeAdBlockerExtended()
 
         // Block premium upsell / "Like listening without limits?" popups.
         activateUpsellPopupBlocker()
