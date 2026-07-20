@@ -24,6 +24,8 @@ EeveeSpotify_CFLAGS = -fobjc-arc -ISources/EeveeSpotifyC/include -Os
 # through libroothide at runtime. Rootless builds continue to use libroot.
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 EeveeSpotify_LDFLAGS += -lroothide
+else
+EeveeSpotify_LDFLAGS += -lroot
 endif
 
 # Sideload compatibility (keychain redirect, group containers, CloudKit) is
