@@ -4,7 +4,7 @@
 # with the SwiftProtobuf statically embedded in SpotifyShared.framework.
 #
 # Outputs a fat (arm64+arm64e) framework at:
-#   $THEOS/lib/iphone/rootless/EeveeSwiftProtobuf.framework
+#   $THEOS/lib/iphone/$THEOS_PACKAGE_SCHEME/EeveeSwiftProtobuf.framework
 #
 # Why we do this instead of using the prebuilt SwiftProtobuf deb:
 # duplicate-class warnings + SIGSEGV crashes when both copies (ours +
@@ -16,7 +16,8 @@ set -euo pipefail
 VERSION="${SWIFTPROTOBUF_VERSION:-1.29.0}"
 SRC="${SRC_DIR:-/tmp/swiftprotobuf-build}"
 MODULE="EeveeSwiftProtobuf"
-OUT="$THEOS/lib/iphone/rootless/${MODULE}.framework"
+PACKAGE_SCHEME="${THEOS_PACKAGE_SCHEME:-rootless}"
+OUT="$THEOS/lib/iphone/${PACKAGE_SCHEME}/${MODULE}.framework"
 DEPLOY_TARGET="${DEPLOY_TARGET:-14.0}"
 
 [ -n "${THEOS:-}" ] || { echo "THEOS env not set"; exit 1; }
