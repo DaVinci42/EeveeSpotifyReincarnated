@@ -106,6 +106,14 @@ Thanks for all of the community's support, also, thanks to all the devs who work
 
 [whoeevee](https://github.com/whoeevee) 
 
+## Disclaimer
+
+This project is an **independent modification (tweak)** for the Spotify app. We are **not affiliated, associated, authorized, endorsed by, or in any way officially connected with Spotify**, or any of its subsidiaries or affiliates. 
+
+This tweak is created solely for **personal and educational purposes**. Use it at your own risk.
+
+**We do not take any responsibility for any issues, damages, or consequences** resulting from the use or misuse of this tweak. If something breaks, it's not our problem.
+
 ## Star History
 
 <a href="https://www.star-history.com/?repos=jaydenjcpy%2FEeveeSpotifyReincarnated&type=date&legend=top-left">
