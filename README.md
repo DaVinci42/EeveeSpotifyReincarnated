@@ -13,8 +13,8 @@ This tweak makes Spotify think you have a Premium subscription, granting free li
 ## Custom Lyrics Support
 
 **Spotify 9.1.56 and above** - Full custom lyrics functionality is available with the following providers:
-
-- **Musixmatch**
+- **Spicy Lyrics**
+- **Musixmatch(Requires Musixmatch Token)**
 - **PetitLyrics**
 - **LRCLIB**
 - **Genius**
