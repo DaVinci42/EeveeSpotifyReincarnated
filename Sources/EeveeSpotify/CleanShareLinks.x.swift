@@ -70,6 +70,59 @@ enum CleanShareLinks {
         return item
     }
 
+    // MARK: - Deep link cleaning
+
+    /// Returns a copy of the URL being opened by the system with any Spotify share
+    /// links embedded in it cleaned of tracking parameters.
+    ///
+    /// The in-app share sheet's direct-destination buttons (Instagram Stories,
+    /// WhatsApp, Telegram, Messenger, …) hand the Spotify share URL to another app
+    /// through a deep link instead of the pasteboard or the share sheet, e.g.
+    ///
+    ///     whatsapp://send?text=...https://open.spotify.com/track/...?si=...
+    ///     instagram-stories://share?source_application=...&content_url=...%3Fsi%3D...
+    ///
+    /// Hooking `UIApplication.openURL` lets us clean the Spotify URL right before
+    /// it leaves the process.
+    static func cleanedDeepLinkURL(_ url: URL) -> URL {
+        guard UserDefaults.cleanShareLinks else { return url }
+
+        // The URL being opened is itself a Spotify share link.
+        if let host = url.host?.lowercased(),
+           host == "open.spotify.com" || host.hasSuffix(".open.spotify.com") {
+            return cleanedURL(from: url)
+        }
+
+        // Clean Spotify URLs embedded in query-item values. URLComponents
+        // percent-decodes each value, so the regex can find the plain
+        // `https://...?si=...` form; assigning back re-encodes the values.
+        // Note: only the changed values trigger a rebuild, and receivers like
+        // WhatsApp/Instagram decode query strings leniently, so the re-encoding
+        // of untouched items (`+` -> `%20`, `%3F` -> `?`) is semantically safe.
+        if var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let items = components.queryItems, !items.isEmpty {
+            var changed = false
+            let cleanedItems = items.map { item -> URLQueryItem in
+                guard let value = item.value else { return item }
+                let cleaned = cleanedString(from: value)
+                if cleaned != value { changed = true }
+                return URLQueryItem(name: item.name, value: cleaned)
+            }
+            if changed {
+                components.queryItems = cleanedItems
+                if let rebuilt = components.url {
+                    return rebuilt
+                }
+            }
+        }
+
+        // Fallback for payloads URLComponents can't parse (e.g. a raw, unencoded
+        // Spotify URL in the query): clean any Spotify URLs in the raw string.
+        let raw = url.absoluteString
+        let cleanedRaw = cleanedString(from: raw)
+        return cleanedRaw == raw ? url : (URL(string: cleanedRaw) ?? url)
+    }
+
     // MARK: - Pasteboard value cleaning
 
     static func cleanPasteboardItems(_ items: [[String: Any]]) -> [[String: Any]] {
@@ -187,6 +240,27 @@ class UIActivityViewControllerCleanShareLinksHook: ClassHook<UIActivityViewContr
     func initWithActivityItems(_ activityItems: [Any], applicationActivities: [UIActivity]?) -> Target {
         let cleanedItems = activityItems.map { CleanShareLinks.cleanedActivityItem($0) }
         return orig.initWithActivityItems(cleanedItems, applicationActivities: applicationActivities)
+    }
+}
+
+/// Cleans Spotify share links inside deep links the app opens.
+///
+/// The in-app share sheet's direct-destination buttons (Instagram, WhatsApp, …)
+/// bypass the pasteboard and the share sheet by handing the Spotify share URL to
+/// another app through a URL scheme, so we intercept it at the `UIApplication`
+/// boundary. Same hook point as `UIApplicationLiveContainerSharingHook`; both are
+/// in Orion's DefaultGroup and coexist fine.
+class UIApplicationCleanShareLinksHook: ClassHook<UIApplication> {
+    func openURL(
+        _ url: URL,
+        options: [String: Any],
+        completionHandler: (@MainActor (ObjCBool) -> Void)?
+    ) {
+        orig.openURL(
+            CleanShareLinks.cleanedDeepLinkURL(url),
+            options: options,
+            completionHandler: completionHandler
+        )
     }
 }
 
