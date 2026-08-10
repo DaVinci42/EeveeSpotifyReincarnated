@@ -278,6 +278,12 @@ struct EeveeSpotify: Tweak {
             return
         }
 
+        // Clean Share Links: swizzle the concrete class of UIPasteboard.general in
+        // addition to the ClassHook<UIPasteboard> hooks — the general pasteboard is a
+        // private subclass whose overridden setters would otherwise bypass base-class
+        // swizzles. Installed unconditionally; cleaning is gated per-call by the toggle.
+        PasteboardConcreteSwizzler.install()
+
         // Activate session logout protection first.
         // NOTE: On some Spotify 9.1.x builds, Orion can still crash even if a selector exists
         // (e.g., method type encoding changes). Be conservative for 9.1.x.
