@@ -5,7 +5,6 @@ extension UserDefaults {
     
     private static let musixmatchTokenKey = "musixmatchToken"
     private static let darkPopUpsKey = "darkPopUps"
-    private static let forceLiquidGlassKey = "forceLiquidGlass"
     private static let patchTypeKey = "patchType"
     private static let trueShuffleEnabledKey = "trueShuffleEnabled"
     private static let overwriteConfigurationKey = "overwriteConfiguration"
@@ -31,20 +30,6 @@ extension UserDefaults {
         }
         set (darkPopUps) {
             container.set(darkPopUps, forKey: darkPopUpsKey)
-        }
-    }
-
-    /// Spotify ships with `UIDesignRequiresCompatibility = true` in Info.plist, which opts
-    /// the app OUT of iOS 26's automatic Liquid Glass redesign for standard UIKit/SwiftUI
-    /// chrome (nav bars, tab bars, toolbars, alerts, etc). When true, we hook NSBundle to
-    /// report that key as false to Spotify's own UIKit runtime checks, so Apple's native
-    /// Liquid Glass material is applied. Requires iOS 26+; no-op otherwise.
-    static var forceLiquidGlass: Bool {
-        get {
-            container.object(forKey: forceLiquidGlassKey) as? Bool ?? false
-        }
-        set (forceLiquidGlass) {
-            container.set(forceLiquidGlass, forKey: forceLiquidGlassKey)
         }
     }
 
