@@ -269,6 +269,10 @@ struct EeveeSpotify: Tweak {
             NSLog("[EeveeSpotify] AdBlockerGroup activated")
         }
 
+        // Force native iOS 26 Liquid Glass for Spotify's standard UIKit/SwiftUI chrome.
+        // Independent of hookTarget/patchType gating below - applies to every version.
+        activateLiquidGlass()
+
         // activateEeveeFlexGesture()
 
         // Global kill-switch for debugging “instant crash / no logs”.
