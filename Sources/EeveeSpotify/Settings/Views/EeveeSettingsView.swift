@@ -129,6 +129,19 @@ struct EeveeSettingsView: View {
                 )
             }
 
+            Button {
+                pushSettingsController(
+                    with: EeveeBackupAndRestoreSettingsView(),
+                    title: "backup_and_restore".localized
+                )
+            } label: {
+                NavigationSectionView(
+                    color: .teal,
+                    title: "backup_and_restore".localized,
+                    imageSystemName: "arrow.triangle.2.circlepath"
+                )
+            }
+
             //
 
             Section(header: Text("debug_title".localized), footer: Text("debug_section_footer".localized)) {
