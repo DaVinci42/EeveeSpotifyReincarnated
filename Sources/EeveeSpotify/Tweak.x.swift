@@ -278,10 +278,6 @@ struct EeveeSpotify: Tweak {
             return
         }
 
-        // WhisperMode: detect "elsa4hysan" typed in any search bar and
-        // redirect to "Careless Whisper" by George Michael.
-        activateWhisperMode()
-
         // Clean Share Links: swizzle the concrete class of UIPasteboard.general in
         // addition to the ClassHook<UIPasteboard> hooks — the general pasteboard is a
         // private subclass whose overridden setters would otherwise bypass base-class
