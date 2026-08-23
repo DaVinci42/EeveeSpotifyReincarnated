@@ -7,6 +7,7 @@ struct EeveeSettingsView: View {
     
     @State private var hasShownCommonIssuesTip = UserDefaults.hasShownCommonIssuesTip
     @State private var isClearingData = false
+    @State private var easterEggTapCount = 0
 
     private func confirmDestructive(
         title: String,
@@ -248,7 +249,25 @@ struct EeveeSettingsView: View {
         
         .animation(.default, value: isClearingData)
         .animation(.default, value: hasShownCommonIssuesTip)
-        
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("EeveeSpotify")
+                    .font(.headline)
+                    .onTapGesture {
+                        easterEggTapCount += 1
+                        if easterEggTapCount >= 7 {
+                            easterEggTapCount = 0
+                            let alert = UIAlertController(
+                                title: "Special License Detected",
+                                message: "Subscribed to Elsa by Hysan since 2026.",
+                                preferredStyle: .alert
+                            )
+                            alert.addAction(UIAlertAction(title: "Prayers for Hysan 🙏", style: .default))
+                            WindowHelper.shared.present(alert)
+                        }
+                    }
+            }
+        }
         .onAppear {
             WindowHelper.shared.overrideUserInterfaceStyle(.dark)
         }
