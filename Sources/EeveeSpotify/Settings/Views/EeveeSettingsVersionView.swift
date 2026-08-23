@@ -3,6 +3,7 @@ import SwiftUI
 struct EeveeSettingsVersionView: View {
     @State private var latestVersion: String?
     @State private var isPresentingContributorsSheet = false
+    @State private var easterEggTapCount = 0
     
     private func loadVersion() async throws {
         let release = try await GitHubHelper.shared.getLatestRelease()
@@ -48,6 +49,19 @@ struct EeveeSettingsVersionView: View {
         } footer: {
             VStack(alignment: .leading) {
                 Text("v\(EeveeSpotify.version) (build \(EeveeSpotify.buildNumber))")
+                    .onTapGesture {
+                        easterEggTapCount += 1
+                        if easterEggTapCount >= 7 {
+                            easterEggTapCount = 0
+                            let alert = UIAlertController(
+                                title: "Special License Detected",
+                                message: "Subscribed to Elsa by Hysan since 2026.",
+                                preferredStyle: .alert
+                            )
+                            alert.addAction(UIAlertAction(title: "OK", style: .default))
+                            WindowHelper.shared.present(alert)
+                        }
+                    }
                 
                 if latestVersion == nil {
                     HStack(spacing: 10) {
