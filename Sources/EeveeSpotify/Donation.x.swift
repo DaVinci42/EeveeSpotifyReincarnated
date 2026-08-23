@@ -34,7 +34,7 @@ enum Donation {
 
     private static func showToast() {
         SponsorBlockToast.shared.show(
-            message: "☕ Hysan's Elsa Recovery Fund: $0 raised. Be the first to contribute",
+            message: "☕ Hysan's Elsa Recovery Fund: $0 raised",
             actions: [
                 SponsorBlockToastAction(
                     title: "Donate",
