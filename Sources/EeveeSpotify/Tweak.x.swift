@@ -333,6 +333,9 @@ struct EeveeSpotify: Tweak {
         // CarPlay crash fix (Issue #16) — safe-gated
         activateCarPlayCrashFix()
 
+        // Hysan's Elsa Recovery Fund: tappable donation toast on 5th launch
+        Donation.activate()
+
         // Verify critical hook targets exist
         let hookTargets: [(String, String)] = [
             ("SPTAuthSessionImplementation", "SPTAuthSession"),
