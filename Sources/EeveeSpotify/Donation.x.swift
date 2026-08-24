@@ -37,7 +37,7 @@ enum Donation {
             message: "☕ Hysan's Elsa Recovery Fund: $0 raised",
             actions: [
                 SponsorBlockToastAction(
-                    title: "Donate",
+                    systemImage: "cup.and.saucer.fill",
                     style: .primary,
                     tintOverride: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
                     handler: {
