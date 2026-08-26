@@ -96,7 +96,11 @@ To open Spotify links in sideloaded app, use [OpenSpotifySafariExtension](https:
 ## Credits
 Thanks for all of the community's support, also, thanks to all the devs who worked along with us to revive this project Go check the other dev's out:
 
-[Spikerko](https://github.com/Spikerko)
+[jaydenjcpy](https://github.com/jaydenjcpy)
+
+[Ryuk](https://github.com/faroukbmiled) 
+
+[Mod4](https://github.com/M0d-4)
 
 [estrogencat](https://github.com/estrogencat)
 
