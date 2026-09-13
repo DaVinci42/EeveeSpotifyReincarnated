@@ -74,17 +74,6 @@ jobs:
           chmod +x Tools/SwiftProtobufBuild/build-eeveeswiftprotobuf.sh
           Tools/SwiftProtobufBuild/build-eeveeswiftprotobuf.sh
 
-      - name: Generate spoti.pw flag table from IPA
-        if: ${{ inputs.ipa_url != '' }}
-        run: |
-          # spoti.pw's flag table (SGFlagList.m) is generated from a decrypted Spotify
-          # IPA by its scripts/extract-flags.py and is gitignored upstream. Run it here
-          # against the checked-out submodule so the integrated spoti.pw in the deb
-          # gets the real table; without it the Makefile compiles the empty-table stub
-          # (Tools/SGFlagListStub.m) and the "All flags" page lists nothing.
-          wget "${{ inputs.ipa_url }}" --no-verbose -O "$RUNNER_TEMP/flags-ipa"
-          python3 Sources/EeveeSpotifyC/SubRepos/spoti.pw/scripts/extract-flags.py "$RUNNER_TEMP/flags-ipa"
-
       - name: Build .deb (rootless)
         env:
           REPO_SLUG: ${{ github.repository }}
